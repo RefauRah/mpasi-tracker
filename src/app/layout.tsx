@@ -24,7 +24,7 @@ export default function RootLayout({
     <html lang="id" className={nunito.variable}>
       <body className="bg-[var(--bg-primary)] text-[var(--text-main)] antialiased min-h-screen pb-20">
         <div className="max-w-lg mx-auto min-h-screen flex flex-col bg-[var(--bg-primary)] border-x border-[var(--border-color)] shadow-sm">
-          <main className="flex-1 p-4 sm:p-5">{children}</main>
+          <main className="flex-1 p-4 sm:p-5 pb-28 sm:pb-32">{children}</main>
           <BottomNav />
         </div>
       </body>

@@ -47,11 +47,11 @@ export default function NutritionChart({ data, targetCalories }: NutritionChartP
         <h3 className="text-sm font-bold text-[var(--text-main)] mb-1">Tren Kalori Harian (kkal)</h3>
         <p className="text-xs text-[var(--text-muted)] mb-4">Garis putus-putus merah menunjukkan target kalori harian</p>
 
-        <div className="h-64 w-full">
+        <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 15, right: 15, left: -15, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD1" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#7C6E60' }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#7C6E60' }} dy={5} />
               <YAxis tick={{ fontSize: 11, fill: '#7C6E60' }} />
               <Tooltip
                 contentStyle={{
@@ -83,15 +83,15 @@ export default function NutritionChart({ data, targetCalories }: NutritionChartP
       </div>
 
       {/* Chart 2: Makronutrisi Breakdown (Protein, Karbo, Lemak) */}
-      <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)]">
+      <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] mb-6">
         <h3 className="text-sm font-bold text-[var(--text-main)] mb-1">Distribusi Makronutrisi (gram)</h3>
         <p className="text-xs text-[var(--text-muted)] mb-4">Perbandingan Protein, Karbohidrat, dan Lemak harian</p>
 
-        <div className="h-64 w-full">
+        <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 15, right: 15, left: -15, bottom: 15 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD1" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#7C6E60' }} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#7C6E60' }} dy={5} />
               <YAxis tick={{ fontSize: 11, fill: '#7C6E60' }} />
               <Tooltip
                 contentStyle={{
@@ -102,7 +102,7 @@ export default function NutritionChart({ data, targetCalories }: NutritionChartP
                   fontSize: '12px',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }} />
               <Bar dataKey="protein" name="Protein (g)" fill="#F59E0B" radius={[4, 4, 0, 0]} />
               <Bar dataKey="carbs" name="Karbo (g)" fill="#FB923C" radius={[4, 4, 0, 0]} />
               <Bar dataKey="fat" name="Lemak (g)" fill="#EAB308" radius={[4, 4, 0, 0]} />
