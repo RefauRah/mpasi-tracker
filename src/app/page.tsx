@@ -5,6 +5,8 @@ import MealInput from '@/components/MealInput';
 import NutritionProgress from '@/components/NutritionProgress';
 import FoodCard from '@/components/FoodCard';
 import RecommendationCard from '@/components/RecommendationCard';
+import MedicationSection from '@/components/MedicationSection';
+import GrowthSection from '@/components/GrowthSection';
 import { Baby, Meal, MenuRecommendation, NutritionSummary, NutritionTarget } from '@/lib/types';
 import { calculateAgeInMonths, formatAge, getNutritionTarget } from '@/lib/nutrition-targets';
 import { Sparkles, Calendar as CalendarIcon, RefreshCw, Heart } from 'lucide-react';
@@ -169,6 +171,12 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Medication Logging Section */}
+      <MedicationSection date={todayStr} />
+
+      {/* Growth (Weight/Height) Tracking Section */}
+      <GrowthSection />
 
       {/* AI Menu Recommendations */}
       <div className="space-y-3 pt-2">

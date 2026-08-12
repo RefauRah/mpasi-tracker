@@ -20,18 +20,18 @@ export async function GET(request: Request) {
 
     if (date) {
       res = await db.execute({
-        sql: 'SELECT * FROM meals WHERE date = ? ORDER BY created_at ASC',
+        sql: 'SELECT * FROM meals WHERE date = ? ORDER BY meal_time ASC, created_at ASC',
         args: [date],
       });
     } else if (startDate && endDate) {
       res = await db.execute({
-        sql: 'SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date ASC, created_at ASC',
+        sql: 'SELECT * FROM meals WHERE date >= ? AND date <= ? ORDER BY date ASC, meal_time ASC, created_at ASC',
         args: [startDate, endDate],
       });
     } else {
       const today = new Date().toISOString().split('T')[0];
       res = await db.execute({
-        sql: 'SELECT * FROM meals WHERE date = ? ORDER BY created_at ASC',
+        sql: 'SELECT * FROM meals WHERE date = ? ORDER BY meal_time ASC, created_at ASC',
         args: [today],
       });
     }
@@ -40,6 +40,7 @@ export async function GET(request: Request) {
       id: Number(row.id),
       baby_id: Number(row.baby_id),
       date: String(row.date),
+      meal_time: row.meal_time ? String(row.meal_time) : '08:00',
       meal_type: String(row.meal_type),
       input_text: String(row.input_text),
       foods: JSON.parse(String(row.foods_json || '[]')),

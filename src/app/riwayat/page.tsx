@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import FoodCard from '@/components/FoodCard';
+import MedicationSection from '@/components/MedicationSection';
 import { Meal, NutritionSummary } from '@/lib/types';
-import { Calendar as CalendarIcon, History, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, History } from 'lucide-react';
 
 export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -63,8 +64,8 @@ export default function HistoryPage() {
             <History size={20} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-[var(--text-main)]">Riwayat MPASI</h1>
-            <p className="text-xs text-[var(--text-muted)]">Lihat kembali catatan makanan per tanggal</p>
+            <h1 className="text-lg font-bold text-[var(--text-main)]">Riwayat MPASI & Kesehatan</h1>
+            <p className="text-xs text-[var(--text-muted)]">Lihat kembali catatan makanan & obat per tanggal</p>
           </div>
         </div>
 
@@ -105,8 +106,9 @@ export default function HistoryPage() {
 
       {/* Meals List */}
       <div className="space-y-3">
+        <h3 className="text-sm font-bold text-[var(--text-main)]">Daftar Makanan ({meals.length})</h3>
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--text-muted)]">
+          <div className="py-8 text-center text-xs text-[var(--text-muted)]">
             Memuat riwayat makanan...
           </div>
         ) : meals.length === 0 ? (
@@ -119,6 +121,9 @@ export default function HistoryPage() {
           ))
         )}
       </div>
+
+      {/* Medications List */}
+      <MedicationSection date={selectedDate} />
     </div>
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import DataTransferModal from '@/components/DataTransferModal';
 import { Baby } from '@/lib/types';
 import { calculateAgeInMonths, formatAge, getNutritionTarget } from '@/lib/nutrition-targets';
-import { Baby as BabyIcon, Save, Info, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Baby as BabyIcon, Save, Info, CheckCircle2 } from 'lucide-react';
 
 export default function ProfilePage() {
   const [baby, setBaby] = useState<Baby | null>(null);
@@ -54,7 +55,6 @@ export default function ProfilePage() {
 
   const ageMonths = birthDate ? calculateAgeInMonths(birthDate) : 8;
   const ageText = formatAge(ageMonths);
-  const currentTarget = getNutritionTarget(ageMonths);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -122,8 +122,11 @@ export default function ProfilePage() {
         </form>
       </div>
 
+      {/* Data Export / Import Section */}
+      <DataTransferModal />
+
       {/* Recommended Nutrition Reference Table */}
-      <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-3">
+      <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-3 mb-6">
         <div className="flex items-center gap-2">
           <Info size={18} className="text-[var(--accent-gold)]" />
           <h3 className="text-sm font-bold text-[var(--text-main)]">Standar Target Nutrisi MPASI (WHO)</h3>

@@ -41,6 +41,7 @@ export async function initDb() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         baby_id INTEGER NOT NULL,
         date TEXT NOT NULL,
+        meal_time TEXT DEFAULT '08:00',
         meal_type TEXT NOT NULL,
         input_text TEXT NOT NULL,
         foods_json TEXT NOT NULL,
@@ -51,6 +52,39 @@ export async function initDb() {
         total_fiber REAL DEFAULT 0,
         total_iron REAL DEFAULT 0,
         total_calcium REAL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Ensure meal_time column exists if meals table was created earlier
+    try {
+      await db.execute("ALTER TABLE meals ADD COLUMN meal_time TEXT DEFAULT '08:00'");
+    } catch {
+      // Column already exists
+    }
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS medications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        baby_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL,
+        name TEXT NOT NULL,
+        dosage TEXT NOT NULL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS growth_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        baby_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        weight REAL NOT NULL,
+        height REAL,
+        head_circ REAL,
+        notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);

@@ -2,28 +2,41 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import NutritionChart from '@/components/NutritionChart';
-import { Baby } from '@/lib/types';
+import { Baby, GrowthLog } from '@/lib/types';
 import { calculateAgeInMonths, getNutritionTarget } from '@/lib/nutrition-targets';
-import { BarChart3, TrendingUp, Target, Award } from 'lucide-react';
+import { BarChart3, TrendingUp, Target, Scale, Ruler } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts';
 
 export default function GraphPage() {
   const [days, setDays] = useState<number>(7);
   const [statsData, setStatsData] = useState<any[]>([]);
+  const [growthData, setGrowthData] = useState<GrowthLog[]>([]);
   const [baby, setBaby] = useState<Baby | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, babyRes] = await Promise.all([
+      const [statsRes, babyRes, growthRes] = await Promise.all([
         fetch(`/api/stats?days=${days}`),
         fetch('/api/baby'),
+        fetch('/api/growth'),
       ]);
       const stats = await statsRes.json();
       const babyData = await babyRes.json();
+      const growth = await growthRes.json();
 
       setStatsData(Array.isArray(stats) ? stats : []);
       setBaby(babyData);
+      setGrowthData(Array.isArray(growth) ? growth : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -43,6 +56,8 @@ export default function GraphPage() {
   const avgCal = statsData.length > 0 ? Math.round(totalCal / statsData.length) : 0;
   const daysTargetMet = statsData.filter((d) => d.calories >= target.calories * 0.8).length;
 
+  const latestWeight = growthData.length > 0 ? growthData[growthData.length - 1].weight : '-';
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
@@ -53,7 +68,7 @@ export default function GraphPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-[var(--text-main)]">Grafik & Tren Nutrisi</h1>
-            <p className="text-xs text-[var(--text-muted)]">Analisis asupan nutrisi MPASI si kecil dari waktu ke waktu</p>
+            <p className="text-xs text-[var(--text-muted)]">Analisis asupan nutrisi MPASI & berat badan si kecil</p>
           </div>
         </div>
 
@@ -80,35 +95,88 @@ export default function GraphPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-color)] shadow-sm space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-            <TrendingUp size={14} className="text-[var(--accent-gold)]" />
-            <span>Rata-Rata Kalori</span>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)] shadow-sm space-y-0.5">
+          <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--text-muted)]">
+            <TrendingUp size={12} className="text-[var(--accent-gold)]" />
+            <span>Rata-Rata</span>
           </div>
-          <p className="text-xl font-extrabold text-[var(--text-main)]">
-            {avgCal} <span className="text-xs font-normal text-[var(--text-muted)]">kkal/hari</span>
+          <p className="text-base font-extrabold text-[var(--text-main)]">
+            {avgCal} <span className="text-[10px] font-normal text-[var(--text-muted)]">kkal</span>
           </p>
         </div>
 
-        <div className="bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-color)] shadow-sm space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-            <Target size={14} className="text-[var(--accent-sage)]" />
-            <span>Pencapaian Target</span>
+        <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)] shadow-sm space-y-0.5">
+          <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--text-muted)]">
+            <Target size={12} className="text-[var(--accent-sage)]" />
+            <span>Target Harian</span>
           </div>
-          <p className="text-xl font-extrabold text-[var(--text-main)]">
-            {daysTargetMet} / {statsData.length} <span className="text-xs font-normal text-[var(--text-muted)]">hari</span>
+          <p className="text-base font-extrabold text-[var(--text-main)]">
+            {daysTargetMet}/{statsData.length} <span className="text-[10px] font-normal text-[var(--text-muted)]">hari</span>
+          </p>
+        </div>
+
+        <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)] shadow-sm space-y-0.5">
+          <div className="flex items-center justify-center gap-1 text-[10px] text-[var(--text-muted)]">
+            <Scale size={12} className="text-blue-600" />
+            <span>BB Terakhir</span>
+          </div>
+          <p className="text-base font-extrabold text-[var(--text-main)]">
+            {latestWeight} <span className="text-[10px] font-normal text-[var(--text-muted)]">kg</span>
           </p>
         </div>
       </div>
 
-      {/* Recharts Component */}
+      {/* Recharts Nutrition Component */}
       {loading ? (
         <div className="py-16 text-center text-xs text-[var(--text-muted)]">
           Memuat data grafik...
         </div>
       ) : (
         <NutritionChart data={statsData} targetCalories={target.calories} />
+      )}
+
+      {/* Growth Chart (Weight over time) */}
+      {growthData.length > 0 && (
+        <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-3 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                <Scale size={16} className="text-blue-600" />
+                <span>Tren Pertumbuhan Berat Badan (kg)</span>
+              </h3>
+              <p className="text-xs text-[var(--text-muted)]">Perkembangan berat badan si kecil dari waktu ke waktu</p>
+            </div>
+          </div>
+
+          <div className="h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={growthData} margin={{ top: 15, right: 15, left: -15, bottom: 15 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8DFD1" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#7C6E60' }} dy={5} />
+                <YAxis tick={{ fontSize: 11, fill: '#7C6E60' }} domain={['auto', 'auto']} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E8DFD1',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    fontSize: '12px',
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weight"
+                  name="Berat Badan (kg)"
+                  stroke="#2563EB"
+                  strokeWidth={3}
+                  dot={{ r: 5, fill: '#2563EB' }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       )}
     </div>
   );

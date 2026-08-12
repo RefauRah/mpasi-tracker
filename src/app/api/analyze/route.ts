@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { input_text, meal_type, date } = body;
+    const { input_text, meal_type, date, meal_time } = body;
 
     if (!input_text || typeof input_text !== 'string' || !input_text.trim()) {
       return NextResponse.json({ error: 'Input text is required' }, { status: 400 });
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
 
     const mealType: MealType = meal_type || 'sarapan';
     const mealDate = date || new Date().toISOString().split('T')[0];
+    const timeVal = meal_time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     let ageInMonths = 8;
     const db = await getDbClient();
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       id: Date.now(),
       baby_id: 1,
       date: mealDate,
+      meal_time: timeVal,
       meal_type: mealType,
       input_text,
       foods: result.foods,
@@ -54,13 +56,14 @@ export async function POST(request: Request) {
       const insertRes = await db.execute({
         sql: `
           INSERT INTO meals (
-            baby_id, date, meal_type, input_text, foods_json,
+            baby_id, date, meal_time, meal_type, input_text, foods_json,
             total_calories, total_protein, total_carbs, total_fat, total_fiber, total_iron, total_calcium
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         args: [
           1,
           mealDate,
+          timeVal,
           mealType,
           input_text,
           JSON.stringify(result.foods),

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Utensils, AlertCircle, PlusCircle } from 'lucide-react';
+import { Sparkles, Utensils, AlertCircle, Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { MealType } from '@/lib/types';
 
 interface MealInputProps {
@@ -11,6 +11,11 @@ interface MealInputProps {
 export default function MealInput({ onMealAdded }: MealInputProps) {
   const [inputText, setInputText] = useState('');
   const [mealType, setMealType] = useState<MealType>('sarapan');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [mealTime, setMealTime] = useState(() => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5); // "HH:mm"
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,7 +40,8 @@ export default function MealInput({ onMealAdded }: MealInputProps) {
         body: JSON.stringify({
           input_text: inputText,
           meal_type: mealType,
-          date: new Date().toISOString().split('T')[0],
+          date,
+          meal_time: mealTime,
         }),
       });
 
@@ -62,14 +68,43 @@ export default function MealInput({ onMealAdded }: MealInputProps) {
 
   return (
     <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)]">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
-          <Utensils size={20} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
+            <Utensils size={20} />
+          </div>
+          <h2 className="text-lg font-bold text-[var(--text-main)]">Catat MPASI</h2>
         </div>
-        <h2 className="text-lg font-bold text-[var(--text-main)]">Catat MPASI Hari Ini</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Date & Time Input Row */}
+        <div className="grid grid-cols-2 gap-2 p-2 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)]">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+              <CalendarIcon size={12} /> Tanggal Makan
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full p-2 text-xs font-bold rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-gold)]"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+              <Clock size={12} /> Jam Makan
+            </label>
+            <input
+              type="time"
+              value={mealTime}
+              onChange={(e) => setMealTime(e.target.value)}
+              className="w-full p-2 text-xs font-bold rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-gold)]"
+            />
+          </div>
+        </div>
+
         {/* Meal Type Selection */}
         <div className="grid grid-cols-4 gap-1.5 p-1 bg-[var(--bg-secondary)] rounded-2xl">
           {mealTypeLabels.map((item) => (

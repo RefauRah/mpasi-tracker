@@ -35,16 +35,6 @@ export default function FoodCard({ meal, onDelete }: FoodCardProps) {
     }
   };
 
-  const formatTime = (timeStr?: string) => {
-    if (!timeStr) return '';
-    try {
-      const d = new Date(timeStr);
-      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
-    }
-  };
-
   return (
     <div className="bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] p-4 transition-all hover:shadow-[var(--shadow-md)]">
       {/* Card Header */}
@@ -53,12 +43,10 @@ export default function FoodCard({ meal, onDelete }: FoodCardProps) {
           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${badge.bg} ${badge.text}`}>
             {badge.label}
           </span>
-          {meal.created_at && (
-            <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
-              <Clock size={12} />
-              {formatTime(meal.created_at)}
-            </span>
-          )}
+          <span className="text-[11px] font-bold text-[var(--text-muted)] flex items-center gap-1 bg-[var(--bg-primary)] px-2 py-0.5 rounded-md border border-[var(--border-color)]">
+            <Clock size={12} />
+            {meal.meal_time || '08:00'}
+          </span>
         </div>
 
         <div className="flex items-center gap-1">

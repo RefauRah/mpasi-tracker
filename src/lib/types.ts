@@ -24,6 +24,7 @@ export interface Meal {
   id: number;
   baby_id: number;
   date: string; // YYYY-MM-DD
+  meal_time?: string; // HH:mm
   meal_type: MealType;
   input_text: string;
   foods: FoodItem[];
@@ -34,6 +35,28 @@ export interface Meal {
   total_fiber: number;
   total_iron: number;
   total_calcium: number;
+  created_at?: string;
+}
+
+export interface MedicationLog {
+  id: number;
+  baby_id: number;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  name: string;
+  dosage: string;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface GrowthLog {
+  id: number;
+  baby_id: number;
+  date: string; // YYYY-MM-DD
+  weight: number; // kg
+  height?: number; // cm
+  head_circ?: number; // cm
+  notes?: string;
   created_at?: string;
 }
 
