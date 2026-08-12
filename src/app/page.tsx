@@ -148,7 +148,7 @@ export default function DashboardPage() {
       <MealInput onMealAdded={fetchBabyAndMeals} />
 
       {/* Daily Progress Bars */}
-      <NutritionProgress summary={summary} target={target} />
+      <NutritionProgress summary={summary} target={target} ageMonths={ageMonths} />
 
       {/* Today's Meals Section */}
       <div className="space-y-3">

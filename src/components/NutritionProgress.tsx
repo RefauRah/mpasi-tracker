@@ -1,37 +1,67 @@
 'use client';
 
+import { useState } from 'react';
 import { NutritionSummary, NutritionTarget } from '@/lib/types';
-import { Flame, BicepsFlexed, Wheat, Droplet, Leaf, ShieldAlert, Sparkles } from 'lucide-react';
+import { getNutritionTarget } from '@/lib/nutrition-targets';
+import { Flame, BicepsFlexed, Wheat, Droplet, Leaf, ShieldAlert, Sparkles, SlidersHorizontal } from 'lucide-react';
 
 interface NutritionProgressProps {
   summary: NutritionSummary;
   target: NutritionTarget;
+  ageMonths: number;
 }
 
-export default function NutritionProgress({ summary, target }: NutritionProgressProps) {
-  const calPercent = target.calories > 0 ? Math.min(100, Math.round((summary.calories / target.calories) * 100)) : 0;
+export default function NutritionProgress({ summary, target: initialTarget, ageMonths }: NutritionProgressProps) {
+  const [targetMode, setTargetMode] = useState<'mpasi_only' | 'akg_total'>('mpasi_only');
+
+  const activeTarget = getNutritionTarget(ageMonths, targetMode);
+
+  const calPercent = activeTarget.calories > 0 ? Math.min(100, Math.round((summary.calories / activeTarget.calories) * 100)) : 0;
 
   const nutrients = [
-    { key: 'protein', label: 'Protein', current: summary.protein, target: target.protein, unit: 'g', icon: BicepsFlexed, color: 'bg-amber-500' },
-    { key: 'carbs', label: 'Karbohidrat', current: summary.carbs, target: target.carbs, unit: 'g', icon: Wheat, color: 'bg-orange-400' },
-    { key: 'fat', label: 'Lemak', current: summary.fat, target: target.fat, unit: 'g', icon: Droplet, color: 'bg-yellow-500' },
-    { key: 'fiber', label: 'Serat', current: summary.fiber, target: target.fiber, unit: 'g', icon: Leaf, color: 'bg-emerald-500' },
-    { key: 'iron', label: 'Zat Besi', current: summary.iron, target: target.iron, unit: 'mg', icon: ShieldAlert, color: 'bg-red-400' },
-    { key: 'calcium', label: 'Kalsium', current: summary.calcium, target: target.calcium, unit: 'mg', icon: Sparkles, color: 'bg-teal-500' },
+    { key: 'protein', label: 'Protein', current: summary.protein, target: activeTarget.protein, unit: 'g', icon: BicepsFlexed, color: 'bg-amber-500' },
+    { key: 'carbs', label: 'Karbohidrat', current: summary.carbs, target: activeTarget.carbs, unit: 'g', icon: Wheat, color: 'bg-orange-400' },
+    { key: 'fat', label: 'Lemak', current: summary.fat, target: activeTarget.fat, unit: 'g', icon: Droplet, color: 'bg-yellow-500' },
+    { key: 'fiber', label: 'Serat', current: summary.fiber, target: activeTarget.fiber, unit: 'g', icon: Leaf, color: 'bg-emerald-500' },
+    { key: 'iron', label: 'Zat Besi', current: summary.iron, target: activeTarget.iron, unit: 'mg', icon: ShieldAlert, color: 'bg-red-400' },
+    { key: 'calcium', label: 'Kalsium', current: summary.calcium, target: activeTarget.calcium, unit: 'mg', icon: Sparkles, color: 'bg-teal-500' },
   ];
 
   return (
-    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-5">
-      {/* Top Header & Age Label */}
-      <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-4">
+      {/* Top Header & Mode Toggle */}
+      <div className="flex justify-between items-start border-b border-[var(--border-color)] pb-3">
         <div>
-          <span className="text-xs text-[var(--text-muted)] font-medium">Target Gizi MPASI</span>
-          <h3 className="text-base font-bold text-[var(--text-main)]">{target.ageLabel}</h3>
+          <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Target Gizi Harian</span>
+          <h3 className="text-sm font-extrabold text-[var(--text-main)]">{activeTarget.ageLabel}</h3>
         </div>
-        <div className="text-right">
-          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--accent-gold-light)] text-[var(--accent-gold)] border border-[var(--border-color)]">
-            WHO & AKG Referensi
-          </span>
+
+        {/* Mode Selector Toggle */}
+        <div className="flex bg-[var(--bg-primary)] p-0.5 rounded-xl border border-[var(--border-color)]">
+          <button
+            type="button"
+            onClick={() => setTargetMode('mpasi_only')}
+            className={`py-1 px-2 text-[10px] font-bold rounded-lg transition-all ${
+              targetMode === 'mpasi_only'
+                ? 'bg-[var(--accent-gold)] text-white shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+            title="Target Khusus Dari Makanan MPASI Saja"
+          >
+            MPASI Saja
+          </button>
+          <button
+            type="button"
+            onClick={() => setTargetMode('akg_total')}
+            className={`py-1 px-2 text-[10px] font-bold rounded-lg transition-all ${
+              targetMode === 'akg_total'
+                ? 'bg-[var(--accent-gold)] text-white shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+            title="AKG Kemenkes RI Total Harian (Termasuk ASI & Makanan)"
+          >
+            AKG Total RI
+          </button>
         </div>
       </div>
 
@@ -40,16 +70,16 @@ export default function NutritionProgress({ summary, target }: NutritionProgress
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-[var(--accent-terracotta)] font-bold text-sm">
             <Flame size={18} />
-            <span>Total Kalori Hari Ini</span>
+            <span>Total Kalori Makanan</span>
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-3xl font-black text-[var(--text-main)]">{summary.calories}</span>
-            <span className="text-sm font-medium text-[var(--text-muted)]">/ {target.calories} kkal</span>
+            <span className="text-sm font-medium text-[var(--text-muted)]">/ {activeTarget.calories} kkal</span>
           </div>
           <p className="text-xs text-[var(--text-muted)]">
             {calPercent >= 100
-              ? '🎉 Target kalori MPASI hari ini telah tercapai!'
-              : `Masih membutuhkan ${(target.calories - summary.calories > 0 ? target.calories - summary.calories : 0)} kkal lagi.`}
+              ? '🎉 Target kalori hari ini telah tercapai!'
+              : `Butuh ${(activeTarget.calories - summary.calories > 0 ? activeTarget.calories - summary.calories : 0)} kkal lagi (${targetMode === 'mpasi_only' ? 'dari MPASI' : 'dari Makanan+ASI'}).`}
           </p>
         </div>
 
