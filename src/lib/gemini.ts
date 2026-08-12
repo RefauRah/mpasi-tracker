@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { AnalyzeResult, MenuRecommendation, NutritionSummary, NutritionTarget } from './types';
 
 const apiKey = process.env.GEMINI_API_KEY || '';
+const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
 export async function analyzeFoodWithGemini(
   inputText: string,
@@ -14,7 +15,7 @@ export async function analyzeFoodWithGemini(
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: geminiModel });
 
     const prompt = `
 Kamu adalah ahli gizi spesialis MPASI (Makanan Pendamping ASI) bayi.
@@ -77,7 +78,7 @@ export async function getRecommendationsWithGemini(
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: geminiModel });
 
     const prompt = `
 Kamu adalah konsultan MPASI bayi profesional.
