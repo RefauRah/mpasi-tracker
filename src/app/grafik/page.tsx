@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import MPASISubNav from '@/components/MPASISubNav';
 import NutritionChart from '@/components/NutritionChart';
 import { Baby, GrowthLog } from '@/lib/types';
 import { calculateAgeInMonths, getNutritionTarget } from '@/lib/nutrition-targets';
@@ -75,6 +76,9 @@ export default function GraphPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* MPASI Module Navigation */}
+      <MPASISubNav />
+
       {/* Header */}
       <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] space-y-4">
         <div className="flex items-center justify-between">

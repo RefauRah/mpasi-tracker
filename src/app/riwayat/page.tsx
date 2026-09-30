@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import MPASISubNav from '@/components/MPASISubNav';
 import FoodCard from '@/components/FoodCard';
 import MedicationSection from '@/components/MedicationSection';
 import { Meal, NutritionSummary } from '@/lib/types';
@@ -57,6 +58,9 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* MPASI Module Navigation */}
+      <MPASISubNav />
+
       {/* Header */}
       <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] space-y-3">
         <div className="flex items-center gap-2">

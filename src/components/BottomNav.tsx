@@ -2,17 +2,36 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Pill, HeartPulse, BarChart3, History, Baby } from 'lucide-react';
+import { Baby, Pill, HeartPulse, UserCog } from 'lucide-react';
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'MPASI Bayi', icon: Baby },
-    { href: '/obat-tb', label: 'Obat TB', icon: Pill },
-    { href: '/orang-tua', label: 'Ayah & Ibu', icon: HeartPulse },
-    { href: '/grafik', label: 'Grafik', icon: BarChart3 },
-    { href: '/riwayat', label: 'Riwayat', icon: History },
+    {
+      href: '/',
+      label: 'MPASI Bayi',
+      icon: Baby,
+      isActive: pathname === '/' || pathname === '/riwayat' || pathname === '/grafik',
+    },
+    {
+      href: '/obat-tb',
+      label: 'Obat TB',
+      icon: Pill,
+      isActive: pathname.startsWith('/obat-tb'),
+    },
+    {
+      href: '/orang-tua',
+      label: 'Ayah & Ibu',
+      icon: HeartPulse,
+      isActive: pathname.startsWith('/orang-tua'),
+    },
+    {
+      href: '/profil',
+      label: 'Kelola Profil',
+      icon: UserCog,
+      isActive: pathname.startsWith('/profil'),
+    },
   ];
 
   return (
@@ -20,20 +39,20 @@ export default function BottomNav() {
       <div className="max-w-lg mx-auto flex justify-around items-center">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const active = item.isActive;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all duration-200 ${
-                isActive
+                active
                   ? 'text-[var(--accent-gold)] font-bold scale-105'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
               }`}
             >
               <div
                 className={`p-1.5 rounded-xl transition-colors ${
-                  isActive ? 'bg-[var(--accent-gold-light)]' : 'bg-transparent'
+                  active ? 'bg-[var(--accent-gold-light)]' : 'bg-transparent'
                 }`}
               >
                 <Icon size={22} />

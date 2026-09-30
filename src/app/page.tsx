@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import MPASISubNav from '@/components/MPASISubNav';
 import MealInput from '@/components/MealInput';
 import NutritionProgress from '@/components/NutritionProgress';
 import FoodCard from '@/components/FoodCard';
@@ -115,6 +116,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* MPASI Module Navigation */}
+      <MPASISubNav />
+
       {/* App Header */}
       <div className="flex items-center justify-between bg-[var(--bg-card)] p-4 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3">
