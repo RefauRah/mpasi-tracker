@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import MPASISubNav from '@/components/MPASISubNav';
 import FoodCard from '@/components/FoodCard';
 import MedicationSection from '@/components/MedicationSection';
+import Pagination from '@/components/Pagination';
 import { Meal, NutritionSummary } from '@/lib/types';
 import { Calendar as CalendarIcon, History } from 'lucide-react';
 
@@ -11,6 +12,10 @@ export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination for meals
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -55,6 +60,17 @@ export default function HistoryPage() {
     month: 'long',
     year: 'numeric',
   });
+
+  // Reset page when date changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate]);
+
+  const totalPages = Math.ceil(meals.length / pageSize) || 1;
+  const paginatedMeals = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return meals.slice(start, start + pageSize);
+  }, [meals, currentPage, pageSize]);
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -120,9 +136,23 @@ export default function HistoryPage() {
             Tidak ada riwayat makanan yang tercatat pada tanggal ini.
           </div>
         ) : (
-          meals.map((meal) => (
-            <FoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
-          ))
+          <div className="space-y-3">
+            {paginatedMeals.map((meal) => (
+              <FoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
+            ))}
+
+            {meals.length > pageSize && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={meals.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[5, 10, 20]}
+              />
+            )}
+          </div>
         )}
       </div>
 

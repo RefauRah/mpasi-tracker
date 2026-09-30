@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ParentLabCheck, ParentProfile, ParentRole } from '@/lib/types';
+import Pagination from '@/components/Pagination';
 import { TestTube2, Plus, Trash2, Calendar, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface ParentLabSectionProps {
@@ -13,6 +14,10 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
   const [checks, setChecks] = useState<ParentLabCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Form states
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -99,6 +104,17 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
   const maxCholesterolNormal = 200;
 
   const latestCheck = checks.length > 0 ? checks[checks.length - 1] : null;
+
+  // Pagination calculations (show newest first)
+  const sortedChecks = useMemo(() => {
+    return [...checks].reverse();
+  }, [checks]);
+
+  const totalPages = Math.ceil(sortedChecks.length / pageSize) || 1;
+  const paginatedChecks = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedChecks.slice(start, start + pageSize);
+  }, [sortedChecks, currentPage, pageSize]);
 
   return (
     <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-4">
@@ -301,7 +317,7 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
         </p>
       ) : (
         <div className="space-y-2">
-          {checks.map((chk) => (
+          {paginatedChecks.map((chk) => (
             <div
               key={chk.id}
               className="p-3 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs"
@@ -341,6 +357,17 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
               </button>
             </div>
           ))}
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={sortedChecks.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[5, 10, 20]}
+          />
         </div>
       )}
     </div>

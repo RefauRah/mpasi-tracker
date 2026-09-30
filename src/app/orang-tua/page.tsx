@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import ParentMealInput from '@/components/ParentMealInput';
 import ParentNutritionProgress from '@/components/ParentNutritionProgress';
 import ParentFoodCard from '@/components/ParentFoodCard';
 import ParentLabSection from '@/components/ParentLabSection';
 import ParentHealthChart from '@/components/ParentHealthChart';
 import ParentRecommendationCard from '@/components/ParentRecommendationCard';
+import Pagination from '@/components/Pagination';
 import {
   ParentMeal,
   ParentProfile,
@@ -36,6 +37,10 @@ export default function OrangTuaDashboard() {
   const [recommendations, setRecommendations] = useState<ParentRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Pagination for meals
+  const [mealsPage, setMealsPage] = useState(1);
+  const [mealsPageSize, setMealsPageSize] = useState(5);
 
   // Chart filters
   const [filterMode, setFilterMode] = useState<'days' | 'month'>('days');
@@ -81,6 +86,17 @@ export default function OrangTuaDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Reset meals page when meals change or role changes
+  useEffect(() => {
+    setMealsPage(1);
+  }, [role, todayMeals.length]);
+
+  const mealsTotalPages = Math.ceil(todayMeals.length / mealsPageSize) || 1;
+  const paginatedMeals = useMemo(() => {
+    const start = (mealsPage - 1) * mealsPageSize;
+    return todayMeals.slice(start, start + mealsPageSize);
+  }, [todayMeals, mealsPage, mealsPageSize]);
 
   // Sum up today's nutrition
   const summary = todayMeals.reduce(
@@ -237,9 +253,21 @@ export default function OrangTuaDashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {todayMeals.map((meal) => (
+            {paginatedMeals.map((meal) => (
               <ParentFoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
             ))}
+
+            {todayMeals.length > mealsPageSize && (
+              <Pagination
+                currentPage={mealsPage}
+                totalPages={mealsTotalPages}
+                totalItems={todayMeals.length}
+                pageSize={mealsPageSize}
+                onPageChange={setMealsPage}
+                onPageSizeChange={setMealsPageSize}
+                pageSizeOptions={[5, 10, 20]}
+              />
+            )}
           </div>
         )}
       </div>

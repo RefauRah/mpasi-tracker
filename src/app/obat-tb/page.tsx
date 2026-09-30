@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { TBMedicationLog, TBMedicationStats } from '@/lib/types';
 import TBMedicationChart from '@/components/TBMedicationChart';
 import TBInputModal from '@/components/TBInputModal';
 import TBImportModal from '@/components/TBImportModal';
+import Pagination from '@/components/Pagination';
 import {
   Pill,
   Plus,
@@ -36,6 +37,10 @@ export default function TBTrackerPage() {
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Semua');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modals state
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
@@ -131,19 +136,33 @@ export default function TBTrackerPage() {
   };
 
   // Filtered Logs
-  const filteredLogs = logs.filter((log) => {
-    const matchSearch =
-      searchTerm === '' ||
-      log.day_number.toString().includes(searchTerm) ||
-      log.date.includes(searchTerm) ||
-      log.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.method?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const matchSearch =
+        searchTerm === '' ||
+        log.day_number.toString().includes(searchTerm) ||
+        log.date.includes(searchTerm) ||
+        log.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.method?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchStatus =
-      statusFilter === 'Semua' || log.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchStatus =
+        statusFilter === 'Semua' || log.status.toLowerCase() === statusFilter.toLowerCase();
 
-    return matchSearch && matchStatus;
-  });
+      return matchSearch && matchStatus;
+    });
+  }, [logs, searchTerm, statusFilter]);
+
+  // Total pages and sliced logs for current page
+  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
+  const paginatedLogs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, currentPage, pageSize]);
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   const nextSuggestedDay = (stats?.latestDay || 0) + 1;
   const progressPercent = stats ? Math.min(100, Math.round((stats.completedDays / 180) * 100)) : 0;
@@ -392,7 +411,7 @@ export default function TBTrackerPage() {
           </div>
         ) : (
           <div className="space-y-2.5">
-            {filteredLogs.map((log) => {
+            {paginatedLogs.map((log) => {
               const isDone = log.status.toLowerCase() === 'selesai';
               return (
                 <div
@@ -461,6 +480,17 @@ export default function TBTrackerPage() {
                 </div>
               );
             })}
+
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredLogs.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 20, 50]}
+            />
           </div>
         )}
       </div>
