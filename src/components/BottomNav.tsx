@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, History, BarChart3, Baby } from 'lucide-react';
+import { LayoutDashboard, Pill, HeartPulse, BarChart3, History, Baby } from 'lucide-react';
 
 export default function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Beranda', icon: LayoutDashboard },
-    { href: '/riwayat', label: 'Riwayat', icon: History },
+    { href: '/', label: 'MPASI Bayi', icon: Baby },
+    { href: '/obat-tb', label: 'Obat TB', icon: Pill },
+    { href: '/orang-tua', label: 'Ayah & Ibu', icon: HeartPulse },
     { href: '/grafik', label: 'Grafik', icon: BarChart3 },
-    { href: '/profil', label: 'Profil Bayi', icon: Baby },
+    { href: '/riwayat', label: 'Riwayat', icon: History },
   ];
 
   return (

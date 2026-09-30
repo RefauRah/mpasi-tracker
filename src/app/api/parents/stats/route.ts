@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getDbClient, initDb } from '@/lib/db';
+import { ParentRole } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const monthParam = searchParams.get('month'); // e.g. '2026-09'
+    const role = (searchParams.get('role') || 'ayah') as ParentRole;
+    const monthParam = searchParams.get('month'); // '2026-09'
     const daysParam = parseInt(searchParams.get('days') || '7', 10);
     const days = isNaN(daysParam) ? 7 : daysParam;
 
@@ -16,7 +18,6 @@ export async function GET(request: Request) {
     if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
       const [y, m] = monthParam.split('-').map(Number);
       startDate = new Date(y, m - 1, 1);
-      // Last day of month
       endDate = new Date(y, m, 0);
     } else {
       endDate = new Date();
@@ -41,14 +42,14 @@ export async function GET(request: Request) {
             SUM(total_carbs) as carbs,
             SUM(total_fat) as fat,
             SUM(total_fiber) as fiber,
-            SUM(total_iron) as iron,
-            SUM(total_calcium) as calcium
-          FROM meals
-          WHERE date >= ? AND date <= ?
+            SUM(total_cholesterol) as cholesterol,
+            SUM(total_purine) as purine
+          FROM parent_meals
+          WHERE parent_role = ? AND date >= ? AND date <= ?
           GROUP BY date
           ORDER BY date ASC
         `,
-        args: [startStr, endStr],
+        args: [role, startStr, endStr],
       });
 
       statsRes.rows.forEach((r) => dateMap.set(String(r.date), r));
@@ -71,8 +72,8 @@ export async function GET(request: Request) {
           carbs: Number((Number(item.carbs || 0)).toFixed(1)),
           fat: Number((Number(item.fat || 0)).toFixed(1)),
           fiber: Number((Number(item.fiber || 0)).toFixed(1)),
-          iron: Number((Number(item.iron || 0)).toFixed(1)),
-          calcium: Math.round(Number(item.calcium || 0)),
+          cholesterol: Math.round(Number(item.cholesterol || 0)),
+          purine: Math.round(Number(item.purine || 0)),
         });
       } else {
         result.push({
@@ -83,8 +84,8 @@ export async function GET(request: Request) {
           carbs: 0,
           fat: 0,
           fiber: 0,
-          iron: 0,
-          calcium: 0,
+          cholesterol: 0,
+          purine: 0,
         });
       }
       curr.setDate(curr.getDate() + 1);
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching stats:', error);
+    console.error('Error fetching parent stats:', error);
     return NextResponse.json([]);
   }
 }

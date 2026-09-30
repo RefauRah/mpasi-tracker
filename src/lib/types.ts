@@ -93,3 +93,133 @@ export interface AnalyzeResult {
   total: NutritionSummary;
   notes?: string;
 }
+
+export interface TBMedicationLog {
+  id: number;
+  baby_id: number;
+  day_number: number;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  medicine_name: string;
+  dosage: string;
+  method: string;
+  status: string; // 'Selesai' | 'Terlewat' | 'Sebagian' | 'Muntah' | '-'
+  notes?: string;
+  created_at?: string;
+}
+
+export interface TBMedicationStats {
+  totalLoggedDays: number;
+  completedDays: number;
+  missedDays: number;
+  targetDays: number;
+  completionRate: number;
+  streakDays: number;
+  avgAbsorption: number;
+  latestDay: number;
+  todayLogged: boolean;
+  todayLog?: TBMedicationLog;
+}
+
+export type ParentRole = 'ayah' | 'ibu';
+
+export interface ParentProfile {
+  id: number;
+  role: ParentRole;
+  name: string;
+  age: number;
+  gender: 'pria' | 'wanita';
+  weight: number; // kg
+  height: number; // cm
+  target_calories: number; // default 2000 for ayah, 1700 for ibu
+  target_cholesterol_max: number; // max mg per day, default 200
+  target_purine_max: number; // max mg per day, default 400
+  target_fiber_min: number; // min g per day, default 25-30
+  target_uric_acid_max: number; // target blood level, default 6.5 mg/dL (pria) / 5.5 mg/dL (wanita)
+  target_cholesterol_lab_max: number; // target total blood cholesterol, default 190 mg/dL
+  created_at?: string;
+}
+
+export interface ParentFoodItem {
+  name: string;
+  quantity: string;
+  estimated_grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  cholesterol: number; // mg
+  purine_mg: number; // mg
+  purine_level: 'rendah' | 'sedang' | 'tinggi' | 'sangat_tinggi';
+  saturated_fat: number; // g
+}
+
+export interface ParentMeal {
+  id: number;
+  parent_role: ParentRole;
+  date: string; // YYYY-MM-DD
+  meal_time?: string; // HH:mm
+  meal_type: MealType;
+  input_text: string;
+  foods: ParentFoodItem[];
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  total_fiber: number;
+  total_cholesterol: number; // mg
+  total_purine: number; // mg
+  health_warning?: string; // e.g. Warning for high purine / cholesterol
+  created_at?: string;
+}
+
+export interface ParentLabCheck {
+  id: number;
+  parent_role: ParentRole;
+  date: string; // YYYY-MM-DD
+  uric_acid: number; // mg/dL
+  total_cholesterol: number; // mg/dL
+  ldl_cholesterol?: number; // mg/dL
+  hdl_cholesterol?: number; // mg/dL
+  triglycerides?: number; // mg/dL
+  blood_pressure?: string; // e.g. "120/80"
+  notes?: string;
+  created_at?: string;
+}
+
+export interface ParentWaterLog {
+  id: number;
+  parent_role: ParentRole;
+  date: string;
+  glasses: number;
+}
+
+export interface ParentAnalyzeResult {
+  foods: ParentFoodItem[];
+  total: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    cholesterol: number;
+    purine_mg: number;
+    saturated_fat: number;
+  };
+  health_evaluation: string;
+  purine_status: 'aman' | 'waspada' | 'tinggi';
+  cholesterol_status: 'aman' | 'waspada' | 'tinggi';
+}
+
+export interface ParentRecommendation {
+  title: string;
+  category: 'sarapan' | 'makan_siang' | 'makan_malam' | 'snack_sehat';
+  description: string;
+  benefits: string[];
+  purine_level: string;
+  cholesterol_level: string;
+  estimated_calories: number;
+}
+
+

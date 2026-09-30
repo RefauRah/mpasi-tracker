@@ -4,12 +4,16 @@ import { useState } from 'react';
 import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function DataTransferModal() {
-  const [importType, setImportType] = useState<'meals' | 'medications' | 'growth'>('meals');
+  const [importType, setImportType] = useState<'meals' | 'medications' | 'growth' | 'tb'>('meals');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const handleExport = (type: 'meals' | 'medications' | 'growth') => {
+  const handleExport = (type: 'meals' | 'medications' | 'growth' | 'tb') => {
+    if (type === 'tb') {
+      window.open('/api/tb-medications/export', '_blank');
+      return;
+    }
     window.open(`/api/export?type=${type}`, '_blank');
   };
 
@@ -21,6 +25,20 @@ export default function DataTransferModal() {
     setStatusMessage(null);
 
     try {
+      if (importType === 'tb') {
+        const formData = new FormData();
+        formData.append('file', importFile);
+        const res = await fetch('/api/tb-medications/import', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setStatusMessage({ text: `Berhasil mengimpor ${data.count} catatan Obat TB!`, type: 'success' });
+          setImportFile(null);
+        } else {
+          throw new Error(data.error || 'Gagal mengimpor CSV Obat TB');
+        }
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', importFile);
       formData.append('type', importType);
@@ -58,7 +76,7 @@ export default function DataTransferModal() {
         </div>
         <div>
           <h3 className="text-base font-bold text-[var(--text-main)]">Export & Import Data Excel/CSV</h3>
-          <p className="text-xs text-[var(--text-muted)]">Cadangkan data atau impor catatan MPASI masal</p>
+          <p className="text-xs text-[var(--text-muted)]">Cadangkan data atau impor catatan MPASI & Obat TB masal</p>
         </div>
       </div>
 
@@ -68,20 +86,27 @@ export default function DataTransferModal() {
           <Download size={14} className="text-emerald-600" />
           <span>Export Data (Unduh CSV/Excel)</span>
         </h4>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button
+            type="button"
+            onClick={() => handleExport('tb')}
+            className="p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl text-xs font-bold border border-amber-200 transition-colors text-center"
+          >
+            💊 Obat TB (OAT)
+          </button>
           <button
             type="button"
             onClick={() => handleExport('meals')}
             className="p-2.5 bg-[var(--bg-primary)] hover:bg-emerald-50 text-[var(--text-main)] rounded-xl text-xs font-semibold border border-[var(--border-color)] transition-colors text-center"
           >
-            📊 Data Makanan
+            📊 Makanan MPASI
           </button>
           <button
             type="button"
             onClick={() => handleExport('medications')}
             className="p-2.5 bg-[var(--bg-primary)] hover:bg-purple-50 text-[var(--text-main)] rounded-xl text-xs font-semibold border border-[var(--border-color)] transition-colors text-center"
           >
-            💊 Data Obat
+            🩹 Suplemen/Vitamin
           </button>
           <button
             type="button"
@@ -101,10 +126,11 @@ export default function DataTransferModal() {
         </h4>
 
         <form onSubmit={handleImportSubmit} className="p-3.5 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] space-y-3">
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[var(--bg-secondary)] rounded-xl">
+          <div className="grid grid-cols-4 gap-1.5 p-1 bg-[var(--bg-secondary)] rounded-xl">
             {[
+              { key: 'tb', label: 'Obat TB' },
               { key: 'meals', label: 'Makanan' },
-              { key: 'medications', label: 'Obat' },
+              { key: 'medications', label: 'Vitamin' },
               { key: 'growth', label: 'BB/TB' },
             ].map((t) => (
               <button

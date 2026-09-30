@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import NutritionChart from '@/components/NutritionChart';
 import { Baby, GrowthLog } from '@/lib/types';
 import { calculateAgeInMonths, getNutritionTarget } from '@/lib/nutrition-targets';
-import { BarChart3, TrendingUp, Target, Scale, Ruler } from 'lucide-react';
+import { BarChart3, TrendingUp, Target, Scale, Calendar, Filter } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -16,7 +16,12 @@ import {
 } from 'recharts';
 
 export default function GraphPage() {
+  const [filterType, setFilterType] = useState<'days' | 'month'>('days');
   const [days, setDays] = useState<number>(7);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [statsData, setStatsData] = useState<any[]>([]);
   const [growthData, setGrowthData] = useState<GrowthLog[]>([]);
   const [baby, setBaby] = useState<Baby | null>(null);
@@ -25,8 +30,12 @@ export default function GraphPage() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
+      const statsUrl = filterType === 'month'
+        ? `/api/stats?month=${selectedMonth}`
+        : `/api/stats?days=${days}`;
+
       const [statsRes, babyRes, growthRes] = await Promise.all([
-        fetch(`/api/stats?days=${days}`),
+        fetch(statsUrl),
         fetch('/api/baby'),
         fetch('/api/growth'),
       ]);
@@ -42,7 +51,7 @@ export default function GraphPage() {
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [filterType, days, selectedMonth]);
 
   useEffect(() => {
     fetchStats();
@@ -58,39 +67,95 @@ export default function GraphPage() {
 
   const latestWeight = growthData.length > 0 ? growthData[growthData.length - 1].weight : '-';
 
+  // Format month name for title
+  const monthTitle = new Date(`${selectedMonth}-01`).toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  });
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
-            <BarChart3 size={20} />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[var(--text-main)]">Grafik & Tren Nutrisi</h1>
-            <p className="text-xs text-[var(--text-muted)]">Analisis asupan nutrisi MPASI & berat badan si kecil</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
+              <BarChart3 size={20} />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-[var(--text-main)]">Grafik & Tren Nutrisi</h1>
+              <p className="text-xs text-[var(--text-muted)]">Analisis asupan nutrisi MPASI & berat badan si kecil</p>
+            </div>
           </div>
         </div>
 
-        {/* Days Filter */}
-        <div className="grid grid-cols-3 gap-2 p-1 bg-[var(--bg-secondary)] rounded-2xl">
-          {[
-            { label: '7 Hari', value: 7 },
-            { label: '14 Hari', value: 14 },
-            { label: '30 Hari', value: 30 },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setDays(item.value)}
-              className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                days === item.value
-                  ? 'bg-[var(--bg-card)] text-[var(--accent-gold)] shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        {/* Filter Mode Switcher */}
+        <div className="space-y-2 pt-1 border-t border-[var(--border-color)]">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--text-muted)] flex items-center gap-1">
+              <Filter size={13} />
+              Tipe Filter:
+            </span>
+            <div className="flex p-0.5 bg-[var(--bg-secondary)] rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setFilterType('days')}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  filterType === 'days'
+                    ? 'bg-[var(--bg-card)] text-[var(--accent-gold)] shadow-sm font-bold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                Rentang Hari
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('month')}
+                className={`px-3 py-1 rounded-lg transition-all ${
+                  filterType === 'month'
+                    ? 'bg-[var(--bg-card)] text-[var(--accent-gold)] shadow-sm font-bold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                Per-Bulan
+              </button>
+            </div>
+          </div>
+
+          {filterType === 'days' ? (
+            <div className="grid grid-cols-3 gap-2 p-1 bg-[var(--bg-secondary)] rounded-2xl">
+              {[
+                { label: '7 Hari', value: 7 },
+                { label: '14 Hari', value: 14 },
+                { label: '30 Hari', value: 30 },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setDays(item.value)}
+                  className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                    days === item.value
+                      ? 'bg-[var(--bg-card)] text-[var(--accent-gold)] shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-2 bg-[var(--bg-secondary)] rounded-2xl">
+              <Calendar size={16} className="text-[var(--accent-gold)] shrink-0 ml-1" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full p-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
+              />
+              <span className="text-xs font-bold text-[var(--accent-gold)] whitespace-nowrap px-2">
+                {monthTitle}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

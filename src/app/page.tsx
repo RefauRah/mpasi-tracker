@@ -7,6 +7,7 @@ import FoodCard from '@/components/FoodCard';
 import RecommendationCard from '@/components/RecommendationCard';
 import MedicationSection from '@/components/MedicationSection';
 import GrowthSection from '@/components/GrowthSection';
+import TBDashboardCard from '@/components/TBDashboardCard';
 import { Baby, Meal, MenuRecommendation, NutritionSummary, NutritionTarget } from '@/lib/types';
 import { calculateAgeInMonths, formatAge, getNutritionTarget } from '@/lib/nutrition-targets';
 import { Sparkles, Calendar as CalendarIcon, RefreshCw, Heart } from 'lucide-react';
@@ -172,7 +173,10 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Medication Logging Section */}
+      {/* TB Medication Tracking Widget */}
+      <TBDashboardCard />
+
+      {/* Medication & Vitamin Logging Section */}
       <MedicationSection date={todayStr} />
 
       {/* Growth (Weight/Height) Tracking Section */}
