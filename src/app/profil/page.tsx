@@ -180,14 +180,14 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-4 gap-1.5 p-1 bg-[var(--bg-secondary)] rounded-2xl pt-1">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-[var(--bg-secondary)] rounded-2xl">
           <button
             type="button"
             onClick={() => setActiveTab('anak')}
-            className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'anak'
-                ? 'bg-[var(--bg-card)] text-[var(--accent-gold)] shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'bg-gradient-to-r from-[var(--accent-gold)] to-[#b57a38] text-white shadow-md scale-[1.02]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-primary)]'
             }`}
           >
             <BabyIcon size={14} />
@@ -196,10 +196,10 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setActiveTab('ayah')}
-            className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'ayah'
-                ? 'bg-[var(--bg-card)] text-blue-600 shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md scale-[1.02]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-primary)]'
             }`}
           >
             <User size={14} />
@@ -208,10 +208,10 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setActiveTab('ibu')}
-            className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'ibu'
-                ? 'bg-[var(--bg-card)] text-rose-600 shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md scale-[1.02]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-primary)]'
             }`}
           >
             <User size={14} />
@@ -220,10 +220,10 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setActiveTab('backup')}
-            className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'backup'
-                ? 'bg-[var(--bg-card)] text-emerald-600 shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md scale-[1.02]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-primary)]'
             }`}
           >
             <Database size={14} />
