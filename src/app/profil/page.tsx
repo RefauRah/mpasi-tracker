@@ -24,8 +24,18 @@ import {
   Droplets,
   Apple,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+
+const calculateAutoCalories = (role: ParentRole, w: number, h: number, a: number) => {
+  if (!w || !h || !a) return role === 'ayah' ? 2000 : 1700;
+  const bmr =
+    role === 'ayah'
+      ? 10 * Number(w) + 6.25 * Number(h) - 5 * Number(a) + 5
+      : 10 * Number(w) + 6.25 * Number(h) - 5 * Number(a) - 161;
+  return Math.round(bmr * 1.35); // Standar TDEE aktivitas harian ringan-sedang
+};
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'anak' | 'ayah' | 'ibu' | 'backup'>('anak');
@@ -443,7 +453,11 @@ export default function ProfilePage() {
                   <input
                     type="number"
                     value={parentAge}
-                    onChange={(e) => setParentAge(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setParentAge(val);
+                      setParentCalories(calculateAutoCalories(parentRole, parentWeight, parentHeight, val));
+                    }}
                     required
                     min="18"
                     max="100"
@@ -462,7 +476,11 @@ export default function ProfilePage() {
                     type="number"
                     step="0.5"
                     value={parentWeight}
-                    onChange={(e) => setParentWeight(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setParentWeight(val);
+                      setParentCalories(calculateAutoCalories(parentRole, val, parentHeight, parentAge));
+                    }}
                     className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
                   />
                 </div>
@@ -473,7 +491,11 @@ export default function ProfilePage() {
                   <input
                     type="number"
                     value={parentHeight}
-                    onChange={(e) => setParentHeight(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setParentHeight(val);
+                      setParentCalories(calculateAutoCalories(parentRole, parentWeight, val, parentAge));
+                    }}
                     className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
                   />
                 </div>
@@ -516,36 +538,23 @@ export default function ProfilePage() {
                   </div>
 
                   <p className="text-[11px] text-indigo-900 leading-relaxed">
-                    Berdasarkan Lab Asam Urat (<strong>{aiAssessment.uricAcid} mg/dL</strong>) & Kolesterol (<strong>{aiAssessment.totalCholesterol} mg/dL</strong>), AI merekomendasikan batas target otomatis:
+                    Berdasarkan Lab Asam Urat (<strong>{aiAssessment.uricAcid} mg/dL</strong>) & Kolesterol (<strong>{aiAssessment.totalCholesterol} mg/dL</strong>), AI telah menyetel target harian di bawah secara otomatis.
                   </p>
 
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                     <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Max Purin:</span>
+                      <span className="text-[var(--text-muted)] block text-[9px]">Max Purin AI:</span>
                       <strong className="text-amber-700 text-xs">{aiAssessment.adjusted_purine_max} mg</strong>
                     </div>
                     <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Max Kolesterol:</span>
+                      <span className="text-[var(--text-muted)] block text-[9px]">Max Kolesterol AI:</span>
                       <strong className="text-rose-700 text-xs">{aiAssessment.adjusted_cholesterol_max} mg</strong>
                     </div>
                     <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Min Serat:</span>
+                      <span className="text-[var(--text-muted)] block text-[9px]">Min Serat AI:</span>
                       <strong className="text-emerald-700 text-xs">{aiAssessment.adjusted_fiber_min} g</strong>
                     </div>
                   </div>
-
-                  {(parentPurineMax !== aiAssessment.adjusted_purine_max ||
-                    parentCholesterolMax !== aiAssessment.adjusted_cholesterol_max ||
-                    parentFiberMin !== aiAssessment.adjusted_fiber_min) && (
-                    <button
-                      type="button"
-                      onClick={applyAITargets}
-                      className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Zap size={13} className="text-amber-300" />
-                      <span>⚡ Terapkan Rekomendasi Target AI ke Form</span>
-                    </button>
-                  )}
                 </div>
               ) : (
                 <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-2xl flex items-start gap-2 text-[11px] text-amber-900">
@@ -556,102 +565,143 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Daily Nutrition Intake Targets */}
+              {/* Daily Nutrition Intake Targets (AI-managed & Locked) */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
                     <Flame size={14} className="text-amber-600" />
                     <span>Target Asupan Makanan Harian</span>
                   </h3>
-                  {aiAssessment?.hasLabData && (
-                    <span className="text-[10px] font-bold text-indigo-600 flex items-center gap-1">
-                      <Sparkles size={11} className="text-amber-500" />
-                      Tersinkron AI
-                    </span>
-                  )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 flex items-center gap-1 border border-indigo-200">
+                    <Lock size={11} className="text-indigo-600" />
+                    <span>Otomatis AI (Terkunci)</span>
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
-                      Target Kalori (kkal/hari):
-                    </label>
-                    <input
-                      type="number"
-                      value={parentCalories}
-                      onChange={(e) => setParentCalories(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
-                      Min. Target Serat (g/hari):
-                    </label>
-                    <input
-                      type="number"
-                      value={parentFiberMin}
-                      onChange={(e) => setParentFiberMin(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                    <span className="text-[10px] text-emerald-700 font-medium">
-                      {aiAssessment?.hasLabData ? `Rekomendasi AI: ≥ ${aiAssessment.adjusted_fiber_min} g` : 'Standar: ≥ 25 g'}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)]">
+                        Target Kalori:
+                      </label>
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5">
+                        <Brain size={10} /> Auto BMR
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={parentCalories}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">
+                      Dihitung otomatis dari BB, TB & Usia
                     </span>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
-                      Batas Max Kolesterol (mg/hari):
-                    </label>
-                    <input
-                      type="number"
-                      value={parentCholesterolMax}
-                      onChange={(e) => setParentCholesterolMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                    <span className="text-[10px] text-rose-700 font-medium">
-                      {aiAssessment?.hasLabData ? `Batas Aman AI: ≤ ${aiAssessment.adjusted_cholesterol_max} mg` : 'Aman: < 200 mg'}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)]">
+                        Min. Target Serat:
+                      </label>
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded flex items-center gap-0.5">
+                        <Brain size={10} /> AI Serat
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={parentFiberMin}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">
+                      Target AI: &ge; {parentFiberMin} g/hari
                     </span>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
-                      Batas Max Purin (mg/hari):
-                    </label>
-                    <input
-                      type="number"
-                      value={parentPurineMax}
-                      onChange={(e) => setParentPurineMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                    <span className="text-[10px] text-amber-700 font-medium">
-                      {aiAssessment?.hasLabData ? `Batas Aman AI: ≤ ${aiAssessment.adjusted_purine_max} mg` : 'Aman: < 400 mg'}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)]">
+                        Batas Max Kolesterol:
+                      </label>
+                      <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1 rounded flex items-center gap-0.5">
+                        <Brain size={10} /> AI Lab
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={parentCholesterolMax}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-rose-700 font-semibold mt-0.5 block">
+                      Batas Aman AI: &le; {parentCholesterolMax} mg/hari
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)]">
+                        Batas Max Purin:
+                      </label>
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5">
+                        <Brain size={10} /> AI Lab
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={parentPurineMax}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-semibold mt-0.5 block">
+                      Batas Aman AI: &le; {parentPurineMax} mg/hari
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Lab Blood Targets */}
+              {/* Lab Blood Targets (Locked Standard) */}
               <div className="space-y-3 pt-2 border-t border-[var(--border-color)]">
-                <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                  <Activity size={14} className="text-rose-600" />
-                  <span>Batas Aman Target Hasil Lab Darah</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                    <Activity size={14} className="text-rose-600" />
+                    <span>Batas Aman Target Hasil Lab Darah</span>
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 flex items-center gap-1 border border-slate-200">
+                    <Lock size={11} /> Standar Medis
+                  </span>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
                       Target Asam Urat (&le; mg/dL):
                     </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={parentUricAcidLabMax}
-                      onChange={(e) => setParentUricAcidLabMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                    <span className="text-[10px] text-[var(--text-muted)]">
-                      {activeTab === 'ayah' ? 'Pria: < 7.0 mg/dL' : 'Wanita: < 6.0 mg/dL'}
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={parentUricAcidLabMax}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">
+                      {activeTab === 'ayah' ? 'Standar Pria: < 7.0 mg/dL' : 'Standar Wanita: < 6.0 mg/dL'}
                     </span>
                   </div>
 
@@ -659,14 +709,26 @@ export default function ProfilePage() {
                     <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
                       Target Kolesterol Total (&le; mg/dL):
                     </label>
-                    <input
-                      type="number"
-                      value={parentCholesterolLabMax}
-                      onChange={(e) => setParentCholesterolLabMax(Number(e.target.value))}
-                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
-                    />
-                    <span className="text-[10px] text-[var(--text-muted)]">Ideal: &lt; 200 mg/dL</span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={parentCholesterolLabMax}
+                        readOnly
+                        className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/70 text-xs font-black text-[var(--text-main)] cursor-not-allowed select-none"
+                      />
+                      <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">
+                      Standar Ideal: &lt; 200 mg/dL
+                    </span>
                   </div>
+                </div>
+
+                <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 flex items-center gap-2 text-[11px] text-indigo-900">
+                  <Lock size={14} className="text-indigo-600 shrink-0" />
+                  <span>
+                    Semua target gizi & batas lab di atas <strong>diisi dan dikunci secara otomatis oleh AI</strong> berdasarkan data fisik dan riwayat tes lab darah.
+                  </span>
                 </div>
               </div>
 
