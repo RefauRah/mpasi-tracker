@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ParentProfile, ParentRole, AITargetAssessment } from '@/lib/types';
+import { ParentProfile, ParentRole, AITargetAssessment, ParentLabCheck } from '@/lib/types';
+import { calculateDailyHealthEstimation } from '@/lib/health-estimation';
+import ParentHealthEstimationCard from './ParentHealthEstimationCard';
 import {
   Flame,
   Activity,
@@ -31,6 +33,7 @@ interface ParentNutritionProgressProps {
   profile: ParentProfile;
   role: ParentRole;
   aiAssessment?: AITargetAssessment | null;
+  latestLab?: ParentLabCheck | null;
 }
 
 export default function ParentNutritionProgress({
@@ -38,6 +41,7 @@ export default function ParentNutritionProgress({
   profile,
   role,
   aiAssessment,
+  latestLab,
 }: ParentNutritionProgressProps) {
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [loadingWater, setLoadingWater] = useState(false);
@@ -94,8 +98,22 @@ export default function ParentNutritionProgress({
 
   const hasAIAdjustment = aiAssessment && aiAssessment.hasLabData;
 
+  const healthEstimation = calculateDailyHealthEstimation({
+    role,
+    purine_mg: summary.purine,
+    cholesterol_mg: summary.cholesterol,
+    fiber_g: summary.fiber,
+    calories: summary.calories,
+    waterGlasses,
+    latestLab,
+    targetPurineMax: maxPurine,
+    targetCholesterolMax: maxCholesterol,
+    targetFiberMin: targetFiber,
+  });
+
   return (
-    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-4">
+    <div className="space-y-4">
+      <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-4">
       <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-rose-100 text-rose-700 rounded-xl">
@@ -287,8 +305,12 @@ export default function ParentNutritionProgress({
           >
             <Plus size={14} />
           </button>
+          </div>
         </div>
       </div>
+
+      {/* Real-time Daily Uric Acid & Cholesterol Health Estimation Card */}
+      <ParentHealthEstimationCard estimation={healthEstimation} role={role} />
     </div>
   );
 }

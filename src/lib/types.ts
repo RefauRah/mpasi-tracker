@@ -241,5 +241,24 @@ export interface AITargetAssessment {
   recommendations: string[];
 }
 
+export interface MetricEstimation {
+  baseline: number;
+  estimated: number;
+  diff: number;
+  change_pct: number;
+  trend: 'turun' | 'naik' | 'stabil';
+  status: 'normal' | 'waspada' | 'tinggi';
+  reason: string;
+}
+
+export interface ParentDailyHealthEstimation {
+  uric_acid: MetricEstimation;
+  cholesterol: MetricEstimation;
+  hasLabBaseline: boolean;
+  baselineDate?: string;
+  advice: string;
+}
+
+
 
 

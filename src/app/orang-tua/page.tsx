@@ -243,13 +243,14 @@ export default function OrangTuaDashboard() {
       {/* Input Meal Form */}
       <ParentMealInput role={role} onMealAdded={fetchData} />
 
-      {/* Daily Progress Bars & Meters with AI Target Integration */}
+      {/* Daily Progress Bars & Meters with AI Target & Health Estimation Integration */}
       {profile && (
         <ParentNutritionProgress
           summary={summary}
           profile={profile}
           role={role}
           aiAssessment={aiAssessment}
+          latestLab={labData.length > 0 ? labData[labData.length - 1] : null}
         />
       )}
 
