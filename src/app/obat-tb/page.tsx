@@ -310,50 +310,45 @@ export default function TBTrackerPage() {
       <TBManualInputForm
         onSaved={fetchData}
         nextSuggestedDay={nextSuggestedDay}
-        isOpenDefault={true}
+        isOpenDefault={false}
       />
 
-      {/* Action Toolbar */}
-      <div className="bg-[var(--bg-card)] p-4 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenNewInput}
-              className="py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
-            >
-              <Plus size={16} />
-              <span>+ Form Pop-up (Hari Ke-{nextSuggestedDay})</span>
-            </button>
+      {/* CSV & Data Tools Bar */}
+      <div className="bg-[var(--bg-card)] p-3.5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg">
+            <FileSpreadsheet size={16} />
           </div>
+          <span className="text-xs font-bold text-[var(--text-main)]">Kelola & Cadangkan Data OAT</span>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={handleDownloadTemplate}
-              className="flex-1 sm:flex-none py-2.5 px-3 bg-[var(--bg-primary)] hover:bg-amber-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-colors flex items-center justify-center gap-1.5"
-              title="Download Template CSV Spreadsheet"
-            >
-              <FileSpreadsheet size={15} className="text-emerald-600" />
-              <span>Unduh Template</span>
-            </button>
+        <div className="grid grid-cols-3 sm:flex items-center gap-2">
+          <button
+            onClick={handleDownloadTemplate}
+            className="py-2 px-2.5 bg-[var(--bg-primary)] hover:bg-amber-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-all flex items-center justify-center gap-1.5 hover:border-amber-300"
+            title="Download Template CSV Spreadsheet"
+          >
+            <FileSpreadsheet size={14} className="text-amber-600" />
+            <span className="truncate">Template</span>
+          </button>
 
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="flex-1 sm:flex-none py-2.5 px-3 bg-[var(--bg-primary)] hover:bg-blue-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-colors flex items-center justify-center gap-1.5"
-              title="Import Data dari CSV"
-            >
-              <Upload size={15} className="text-blue-600" />
-              <span>Import CSV</span>
-            </button>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="py-2 px-2.5 bg-[var(--bg-primary)] hover:bg-blue-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-all flex items-center justify-center gap-1.5 hover:border-blue-300"
+            title="Import Data dari CSV"
+          >
+            <Upload size={14} className="text-blue-600" />
+            <span className="truncate">Import</span>
+          </button>
 
-            <button
-              onClick={handleExport}
-              className="flex-1 sm:flex-none py-2.5 px-3 bg-[var(--bg-primary)] hover:bg-emerald-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-colors flex items-center justify-center gap-1.5"
-              title="Export Seluruh Data ke CSV"
-            >
-              <Download size={15} className="text-emerald-600" />
-              <span>Export CSV</span>
-            </button>
-          </div>
+          <button
+            onClick={handleExport}
+            className="py-2 px-2.5 bg-[var(--bg-primary)] hover:bg-emerald-50 text-[var(--text-main)] font-semibold text-xs rounded-xl border border-[var(--border-color)] transition-all flex items-center justify-center gap-1.5 hover:border-emerald-300"
+            title="Export Seluruh Data ke CSV"
+          >
+            <Download size={14} className="text-emerald-600" />
+            <span className="truncate">Export</span>
+          </button>
         </div>
       </div>
 

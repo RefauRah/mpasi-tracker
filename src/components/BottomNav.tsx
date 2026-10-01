@@ -28,15 +28,15 @@ export default function BottomNav() {
     },
     {
       href: '/profil',
-      label: 'Kelola Profil',
+      label: 'Profil',
       icon: UserCog,
       isActive: pathname.startsWith('/profil'),
     },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-card)] border-t border-[var(--border-color)] shadow-[var(--shadow-lg)] px-4 py-2">
-      <div className="max-w-lg mx-auto flex justify-around items-center">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[var(--bg-card)]/90 backdrop-blur-md border-t border-[var(--border-color)] shadow-[0_-4px_20px_rgba(54,42,32,0.06)] px-3 py-2">
+      <div className="max-w-lg mx-auto grid grid-cols-4 gap-1 items-center">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = item.isActive;
@@ -44,20 +44,24 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center py-1 px-3 rounded-2xl transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl transition-all duration-200 ${
                 active
-                  ? 'text-[var(--accent-gold)] font-bold scale-105'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  ? 'text-[var(--accent-gold)] font-bold scale-[1.03]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-primary)]/50'
               }`}
             >
               <div
-                className={`p-1.5 rounded-xl transition-colors ${
-                  active ? 'bg-[var(--accent-gold-light)]' : 'bg-transparent'
+                className={`p-1.5 rounded-xl transition-all duration-200 ${
+                  active
+                    ? 'bg-[var(--accent-gold-light)] shadow-inner text-[var(--accent-gold)]'
+                    : 'bg-transparent'
                 }`}
               >
-                <Icon size={22} />
+                <Icon size={20} />
               </div>
-              <span className="text-[11px] mt-0.5 tracking-wide">{item.label}</span>
+              <span className="text-[10.5px] mt-0.5 tracking-tight font-medium">
+                {item.label}
+              </span>
             </Link>
           );
         })}
