@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import DataTransferModal from '@/components/DataTransferModal';
 import { Baby, ParentProfile, ParentRole, AITargetAssessment } from '@/lib/types';
-import { calculateAgeInMonths, formatAge } from '@/lib/nutrition-targets';
+import { calculateAgeInMonths, formatAge, calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 import {
   Baby as BabyIcon,
   User,
@@ -25,17 +25,11 @@ import {
   Apple,
   Loader2,
   Lock,
+  TrendingDown,
+  TrendingUp,
+  Target,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
-
-const calculateAutoCalories = (role: ParentRole, w: number, h: number, a: number) => {
-  if (!w || !h || !a) return role === 'ayah' ? 2000 : 1700;
-  const bmr =
-    role === 'ayah'
-      ? 10 * Number(w) + 6.25 * Number(h) - 5 * Number(a) + 5
-      : 10 * Number(w) + 6.25 * Number(h) - 5 * Number(a) - 161;
-  return Math.round(bmr * 1.35); // Standar TDEE aktivitas harian ringan-sedang
-};
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'anak' | 'ayah' | 'ibu' | 'backup'>('anak');
@@ -99,10 +93,15 @@ export default function ProfilePage() {
       if (profileData) {
         setParentProfile(profileData);
         setParentName(profileData.name || (role === 'ayah' ? 'Ayah' : 'Ibu'));
-        setParentAge(profileData.age || (role === 'ayah' ? 34 : 32));
-        setParentWeight(profileData.weight || (role === 'ayah' ? 74 : 58));
-        setParentHeight(profileData.height || (role === 'ayah' ? 173 : 160));
-        setParentCalories(profileData.target_calories || (role === 'ayah' ? 2000 : 1700));
+        const ageVal = profileData.age || (role === 'ayah' ? 34 : 32);
+        const weightVal = profileData.weight || (role === 'ayah' ? 74 : 58);
+        const heightVal = profileData.height || (role === 'ayah' ? 173 : 160);
+        setParentAge(ageVal);
+        setParentWeight(weightVal);
+        setParentHeight(heightVal);
+
+        const idealNutr = calculateParentIdealNutrition({ role, weight: weightVal, height: heightVal, age: ageVal });
+        setParentCalories(idealNutr.targetCalories);
         
         // If AI assessment has lab data, prioritize the AI adjusted targets
         if (aiData && aiData.hasLabData) {
@@ -115,8 +114,8 @@ export default function ProfilePage() {
           setParentFiberMin(profileData.target_fiber_min || (role === 'ayah' ? 28 : 25));
         }
 
-        setParentUricAcidLabMax(profileData.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5));
-        setParentCholesterolLabMax(profileData.target_cholesterol_lab_max || 190);
+        setParentUricAcidLabMax(role === 'ayah' ? 6.5 : 5.5);
+        setParentCholesterolLabMax(190);
       }
     } catch (err) {
       console.error('Error loading parent profile or AI targets:', err);
@@ -211,9 +210,13 @@ export default function ProfilePage() {
   const ageMonths = babyBirthDate ? calculateAgeInMonths(babyBirthDate) : 8;
   const ageText = formatAge(ageMonths);
 
-  // BMI Calculation for parents
-  const heightM = parentHeight / 100;
-  const bmi = heightM > 0 ? (parentWeight / (heightM * heightM)).toFixed(1) : '-';
+  // BMI and Ideal Nutrition Calculation for parents
+  const parentIdealNutrition = calculateParentIdealNutrition({
+    role: parentRole,
+    weight: Number(parentWeight),
+    height: Number(parentHeight),
+    age: Number(parentAge),
+  });
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -456,7 +459,13 @@ export default function ProfilePage() {
                     onChange={(e) => {
                       const val = Number(e.target.value);
                       setParentAge(val);
-                      setParentCalories(calculateAutoCalories(parentRole, parentWeight, parentHeight, val));
+                      const ideal = calculateParentIdealNutrition({
+                        role: parentRole,
+                        weight: parentWeight,
+                        height: parentHeight,
+                        age: val,
+                      });
+                      setParentCalories(ideal.targetCalories);
                     }}
                     required
                     min="18"
@@ -466,45 +475,111 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Physical Info */}
-              <div className="grid grid-cols-3 gap-2 p-3 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)]">
-                <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
-                    Berat Badan (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={parentWeight}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setParentWeight(val);
-                      setParentCalories(calculateAutoCalories(parentRole, val, parentHeight, parentAge));
-                    }}
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
-                  />
+              {/* Physical Info & Clinical BMI / Ideal Body Weight */}
+              <div className="space-y-2 p-3 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)]">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
+                      Berat Badan (kg)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={parentWeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setParentWeight(val);
+                        const ideal = calculateParentIdealNutrition({
+                          role: parentRole,
+                          weight: val,
+                          height: parentHeight,
+                          age: parentAge,
+                        });
+                        setParentCalories(ideal.targetCalories);
+                      }}
+                      className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
+                      Tinggi Badan (cm)
+                    </label>
+                    <input
+                      type="number"
+                      value={parentHeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setParentHeight(val);
+                        const ideal = calculateParentIdealNutrition({
+                          role: parentRole,
+                          weight: parentWeight,
+                          height: val,
+                          age: parentAge,
+                        });
+                        setParentCalories(ideal.targetCalories);
+                      }}
+                      className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
+                      Indeks Massa Tubuh
+                    </label>
+                    <div className="p-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-color)] text-center">
+                      <span className="text-xs font-black text-[var(--accent-gold)] block">
+                        {parentIdealNutrition.bmi} BMI
+                      </span>
+                      <span
+                        className={`text-[9px] font-extrabold px-1 rounded block truncate ${
+                          parentIdealNutrition.bmiCategory === 'ideal'
+                            ? 'text-emerald-700 bg-emerald-50'
+                            : parentIdealNutrition.bmiCategory === 'kelebihan'
+                            ? 'text-amber-700 bg-amber-50'
+                            : parentIdealNutrition.bmiCategory === 'obesitas'
+                            ? 'text-red-700 bg-red-50'
+                            : 'text-blue-700 bg-blue-50'
+                        }`}
+                      >
+                        {parentIdealNutrition.bmiCategory === 'ideal'
+                          ? 'Ideal'
+                          : parentIdealNutrition.bmiCategory === 'kelebihan'
+                          ? 'Kelebihan BB'
+                          : parentIdealNutrition.bmiCategory === 'obesitas'
+                          ? 'Obesitas'
+                          : 'Kurus'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
-                    Tinggi Badan (cm)
-                  </label>
-                  <input
-                    type="number"
-                    value={parentHeight}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setParentHeight(val);
-                      setParentCalories(calculateAutoCalories(parentRole, parentWeight, val, parentAge));
-                    }}
-                    className="w-full p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-bold text-[var(--text-main)]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-[var(--text-muted)] font-medium mb-1">
-                    Indeks Massa Tubuh
-                  </label>
-                  <div className="p-2 bg-[var(--bg-card)] rounded-lg border border-[var(--border-color)] text-xs font-bold text-[var(--accent-gold)] text-center">
-                    {bmi} BMI
+
+                {/* Ideal Body Weight Row */}
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--border-color)] text-xs">
+                  <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+                    <span className="text-[10px] text-[var(--text-muted)] block">Berat Badan Ideal (BBI Broca):</span>
+                    <strong className="text-emerald-700 font-extrabold text-xs">
+                      {parentIdealNutrition.idealWeightBroca} kg{' '}
+                      <span className="text-[10px] font-normal text-[var(--text-muted)]">
+                        ({parentIdealNutrition.idealWeightRange.min}-{parentIdealNutrition.idealWeightRange.max} kg)
+                      </span>
+                    </strong>
+                  </div>
+                  <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+                    <span className="text-[10px] text-[var(--text-muted)] block">Status Selisih Berat:</span>
+                    <strong
+                      className={`font-extrabold text-xs ${
+                        parentIdealNutrition.weightDifference > 0
+                          ? 'text-amber-700'
+                          : parentIdealNutrition.weightDifference < 0
+                          ? 'text-blue-700'
+                          : 'text-emerald-700'
+                      }`}
+                    >
+                      {parentIdealNutrition.weightDifference > 0
+                        ? `+${parentIdealNutrition.weightDifference} kg (Kelebihan)`
+                        : parentIdealNutrition.weightDifference < 0
+                        ? `${parentIdealNutrition.weightDifference} kg (Kurang)`
+                        : '0.0 kg (Sudah Ideal)'}
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -570,7 +645,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
                     <Flame size={14} className="text-amber-600" />
-                    <span>Target Asupan Makanan Harian</span>
+                    <span>Target Asupan Makanan Harian Menuju Ideal</span>
                   </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 flex items-center gap-1 border border-indigo-200">
                     <Lock size={11} className="text-indigo-600" />
@@ -582,10 +657,10 @@ export default function ProfilePage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-[11px] font-semibold text-[var(--text-muted)]">
-                        Target Kalori:
+                        Target Kalori Ideal:
                       </label>
                       <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 rounded flex items-center gap-0.5">
-                        <Brain size={10} /> Auto BMR
+                        <Target size={10} /> {parentIdealNutrition.calorieAdjustment !== 0 ? `${parentIdealNutrition.calorieAdjustment > 0 ? `+${parentIdealNutrition.calorieAdjustment}` : parentIdealNutrition.calorieAdjustment} kkal` : 'Ideal'}
                       </span>
                     </div>
                     <div className="relative">
@@ -598,7 +673,7 @@ export default function ProfilePage() {
                       <Lock size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-60" />
                     </div>
                     <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">
-                      Dihitung otomatis dari BB, TB & Usia
+                      {parentIdealNutrition.calorieStrategy}
                     </span>
                   </div>
 

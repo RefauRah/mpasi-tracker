@@ -259,6 +259,22 @@ export interface ParentDailyHealthEstimation {
   advice: string;
 }
 
+export interface ParentIdealNutrition {
+  bmi: number;
+  bmiCategory: 'kurus' | 'ideal' | 'kelebihan' | 'obesitas';
+  bmiCategoryLabel: string;
+  idealWeightBroca: number;
+  idealWeightRange: { min: number; max: number };
+  weightDifference: number;
+  bmr: number;
+  tdeeMaintenance: number;
+  targetCalories: number;
+  calorieAdjustment: number;
+  calorieStrategy: string;
+  explanation: string;
+}
+
+
 
 
 
