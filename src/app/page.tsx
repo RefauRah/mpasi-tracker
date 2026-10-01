@@ -12,6 +12,7 @@ import TBDashboardCard from '@/components/TBDashboardCard';
 import { Baby, Meal, MenuRecommendation, NutritionSummary, NutritionTarget } from '@/lib/types';
 import { calculateAgeInMonths, formatAge, getNutritionTarget } from '@/lib/nutrition-targets';
 import { Sparkles, Calendar as CalendarIcon, RefreshCw, Heart } from 'lucide-react';
+import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
 export default function DashboardPage() {
   const [baby, setBaby] = useState<Baby | null>(null);
@@ -164,7 +165,9 @@ export default function DashboardPage() {
           </h3>
         </div>
 
-        {todayMeals.length === 0 ? (
+        {loading ? (
+          <SkeletonList count={2} />
+        ) : todayMeals.length === 0 ? (
           <div className="p-6 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
             Belum ada makanan yang dicatat hari ini. Yuk ketik makanan pertama si kecil di atas!
           </div>

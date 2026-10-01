@@ -29,6 +29,7 @@ import {
   Flame,
   User,
 } from 'lucide-react';
+import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
 export default function OrangTuaDashboard() {
   const [role, setRole] = useState<ParentRole>('ayah');
@@ -261,7 +262,12 @@ export default function OrangTuaDashboard() {
           </h3>
         </div>
 
-        {todayMeals.length === 0 ? (
+        {loading ? (
+          <div className="space-y-2">
+            <LoadingSpinner text={`Memuat data makanan ${role === 'ayah' ? 'Ayah' : 'Ibu'}...`} size="sm" />
+            <SkeletonList count={2} />
+          </div>
+        ) : todayMeals.length === 0 ? (
           <div className="p-6 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
             Belum ada makanan yang dicatat untuk {profile?.name || (role === 'ayah' ? 'Ayah' : 'Ibu')} hari ini.
           </div>

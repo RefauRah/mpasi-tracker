@@ -24,6 +24,7 @@ import {
   Droplets,
   Apple,
 } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'anak' | 'ayah' | 'ibu' | 'backup'>('anak');
@@ -408,7 +409,10 @@ export default function ProfilePage() {
               </span>
             </div>
 
-            <form onSubmit={handleSaveParent} className="space-y-4">
+            {aiLoading ? (
+              <LoadingSpinner text={`Memuat profil & evaluasi target AI untuk ${activeTab === 'ayah' ? 'Ayah' : 'Ibu'}...`} />
+            ) : (
+              <form onSubmit={handleSaveParent} className="space-y-4">
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 sm:col-span-1">
@@ -678,6 +682,7 @@ export default function ProfilePage() {
                 </span>
               </button>
             </form>
+            )}
           </div>
         </div>
       )}

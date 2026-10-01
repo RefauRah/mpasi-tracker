@@ -7,6 +7,7 @@ import MedicationSection from '@/components/MedicationSection';
 import Pagination from '@/components/Pagination';
 import { Meal, NutritionSummary } from '@/lib/types';
 import { Calendar as CalendarIcon, History } from 'lucide-react';
+import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
 export default function HistoryPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -128,8 +129,9 @@ export default function HistoryPage() {
       <div className="space-y-3">
         <h3 className="text-sm font-bold text-[var(--text-main)]">Daftar Makanan ({meals.length})</h3>
         {loading ? (
-          <div className="py-8 text-center text-xs text-[var(--text-muted)]">
-            Memuat riwayat makanan...
+          <div className="space-y-3">
+            <LoadingSpinner text="Memuat riwayat makanan..." size="sm" />
+            <SkeletonList count={3} />
           </div>
         ) : meals.length === 0 ? (
           <div className="p-8 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">

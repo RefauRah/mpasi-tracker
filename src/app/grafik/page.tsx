@@ -6,6 +6,7 @@ import NutritionChart from '@/components/NutritionChart';
 import { Baby, GrowthLog } from '@/lib/types';
 import { calculateAgeInMonths, getNutritionTarget } from '@/lib/nutrition-targets';
 import { BarChart3, TrendingUp, Target, Scale, Calendar, Filter } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import {
   ResponsiveContainer,
   LineChart,
@@ -198,8 +199,8 @@ export default function GraphPage() {
 
       {/* Recharts Nutrition Component */}
       {loading ? (
-        <div className="py-16 text-center text-xs text-[var(--text-muted)]">
-          Memuat data grafik...
+        <div className="bg-[var(--bg-card)] p-8 rounded-[var(--radius-lg)] border border-[var(--border-color)]">
+          <LoadingSpinner text="Memuat data grafik nutrisi..." />
         </div>
       ) : (
         <NutritionChart data={statsData} targetCalories={target.calories} />

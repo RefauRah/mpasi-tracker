@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Award,
 } from 'lucide-react';
+import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
 export default function TBTrackerPage() {
   const [logs, setLogs] = useState<TBMedicationLog[]>([]);
@@ -401,8 +402,9 @@ export default function TBTrackerPage() {
 
         {/* List Content */}
         {loading ? (
-          <div className="py-12 text-center text-xs text-[var(--text-muted)]">
-            Memuat data pengobatan TB...
+          <div className="space-y-3 py-2">
+            <LoadingSpinner text="Memuat catatan pengobatan TB..." size="sm" />
+            <SkeletonList count={3} />
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-8 bg-[var(--bg-primary)] rounded-2xl border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)] space-y-2">
