@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Droplets,
   Apple,
+  Loader2,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   const [baby, setBaby] = useState<Baby | null>(null);
   const [babyName, setBabyName] = useState('');
   const [babyBirthDate, setBabyBirthDate] = useState('');
+  const [babyLoading, setBabyLoading] = useState(true);
   const [babySaving, setBabySaving] = useState(false);
   const [babyMsg, setBabyMsg] = useState('');
 
@@ -56,6 +58,7 @@ export default function ProfilePage() {
 
   // Fetch Baby
   useEffect(() => {
+    setBabyLoading(true);
     fetch('/api/baby')
       .then((res) => res.json())
       .then((data) => {
@@ -65,7 +68,8 @@ export default function ProfilePage() {
           setBabyBirthDate(data.birth_date || '');
         }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => console.error(err))
+      .finally(() => setBabyLoading(false));
   }, []);
 
   // Fetch Parent when tab changes or role changes
@@ -279,56 +283,60 @@ export default function ProfilePage() {
               <h2 className="text-sm font-bold text-[var(--text-main)]">Profil Anak (MPASI)</h2>
             </div>
 
-            <form onSubmit={handleSaveBaby} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                  Nama Panggilan Bayi / Anak:
-                </label>
-                <input
-                  type="text"
-                  value={babyName}
-                  onChange={(e) => setBabyName(e.target.value)}
-                  placeholder="Contoh: Kirana"
-                  required
-                  className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                  Tanggal Lahir:
-                </label>
-                <input
-                  type="date"
-                  value={babyBirthDate}
-                  onChange={(e) => setBabyBirthDate(e.target.value)}
-                  required
-                  className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
-                />
-              </div>
-
-              {/* Computed Age Info Box */}
-              <div className="p-3.5 bg-[var(--accent-gold-light)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs">
-                <span className="text-[var(--text-muted)] font-medium">Usia Terkalkulasi:</span>
-                <span className="font-bold text-[var(--accent-gold)] text-sm">{ageText}</span>
-              </div>
-
-              {babyMsg && (
-                <div className="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-xl flex items-center gap-2">
-                  <CheckCircle2 size={16} />
-                  <span>{babyMsg}</span>
+            {babyLoading ? (
+              <LoadingSpinner text="Memuat data profil anak..." />
+            ) : (
+              <form onSubmit={handleSaveBaby} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                    Nama Panggilan Bayi / Anak:
+                  </label>
+                  <input
+                    type="text"
+                    value={babyName}
+                    onChange={(e) => setBabyName(e.target.value)}
+                    placeholder="Contoh: Kirana"
+                    required
+                    className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                disabled={babySaving}
-                className="w-full py-3 px-4 bg-[var(--accent-gold)] hover:bg-[#b07839] text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
-              >
-                <Save size={16} />
-                <span>{babySaving ? 'Menyimpan...' : 'Simpan Profil Anak'}</span>
-              </button>
-            </form>
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                    Tanggal Lahir:
+                  </label>
+                  <input
+                    type="date"
+                    value={babyBirthDate}
+                    onChange={(e) => setBabyBirthDate(e.target.value)}
+                    required
+                    className="w-full p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-sm text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
+                  />
+                </div>
+
+                {/* Computed Age Info Box */}
+                <div className="p-3.5 bg-[var(--accent-gold-light)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs">
+                  <span className="text-[var(--text-muted)] font-medium">Usia Terkalkulasi:</span>
+                  <span className="font-bold text-[var(--accent-gold)] text-sm">{ageText}</span>
+                </div>
+
+                {babyMsg && (
+                  <div className="p-3 bg-emerald-50 text-emerald-700 text-xs rounded-xl flex items-center gap-2">
+                    <CheckCircle2 size={16} />
+                    <span>{babyMsg}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={babySaving}
+                  className="w-full py-3 px-4 bg-[var(--accent-gold)] hover:bg-[#b07839] text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
+                >
+                  {babySaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>{babySaving ? 'Menyimpan...' : 'Simpan Profil Anak'}</span>
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Standar WHO Reference Table */}
@@ -674,7 +682,7 @@ export default function ProfilePage() {
                 disabled={parentSaving}
                 className="w-full py-3 px-4 bg-[var(--accent-gold)] hover:bg-[#b07839] text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
               >
-                <Save size={16} />
+                {parentSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 <span>
                   {parentSaving
                     ? 'Menyimpan...'
