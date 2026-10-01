@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDbClient, initDb } from '@/lib/db';
 import { ParentLabCheck, ParentProfile, ParentRole } from '@/lib/types';
 import { evaluateAITargetsFromLab } from '@/lib/gemini';
+import { calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,16 +11,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = (searchParams.get('role') || 'ayah') as ParentRole;
 
+    const defaultAge = role === 'ayah' ? 34 : 32;
+    const defaultWeight = role === 'ayah' ? 74 : 58;
+    const defaultHeight = role === 'ayah' ? 173 : 160;
+    const defaultIdeal = calculateParentIdealNutrition({
+      role,
+      weight: defaultWeight,
+      height: defaultHeight,
+      age: defaultAge,
+    });
+
     const db = await getDbClient();
     let profile: ParentProfile = {
       id: role === 'ayah' ? 1 : 2,
       role,
       name: role === 'ayah' ? 'Ayah' : 'Ibu',
-      age: role === 'ayah' ? 34 : 32,
+      age: defaultAge,
       gender: role === 'ayah' ? 'pria' : 'wanita',
-      weight: role === 'ayah' ? 74 : 58,
-      height: role === 'ayah' ? 173 : 160,
-      target_calories: role === 'ayah' ? 2000 : 1700,
+      weight: defaultWeight,
+      height: defaultHeight,
+      target_calories: defaultIdeal.targetCalories,
       target_cholesterol_max: 200,
       target_purine_max: role === 'ayah' ? 400 : 350,
       target_fiber_min: role === 'ayah' ? 28 : 25,
@@ -39,19 +50,24 @@ export async function GET(request: Request) {
       });
       if (profileRes.rows.length > 0) {
         const row = profileRes.rows[0];
+        const age = Number(row.age || defaultAge);
+        const weight = Number(row.weight || defaultWeight);
+        const height = Number(row.height || defaultHeight);
+        const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+
         profile = {
           id: Number(row.id),
           role: row.role as ParentRole,
           name: String(row.name),
-          age: Number(row.age || 34),
+          age,
           gender: row.gender as 'pria' | 'wanita',
-          weight: Number(row.weight || 70),
-          height: Number(row.height || 170),
-          target_calories: Number(row.target_calories || 2000),
+          weight,
+          height,
+          target_calories: Number(row.target_calories) || ideal.targetCalories,
           target_cholesterol_max: Number(row.target_cholesterol_max || 200),
-          target_purine_max: Number(row.target_purine_max || 400),
-          target_fiber_min: Number(row.target_fiber_min || 25),
-          target_uric_acid_max: Number(row.target_uric_acid_max || 6.5),
+          target_purine_max: Number(row.target_purine_max || (role === 'ayah' ? 400 : 350)),
+          target_fiber_min: Number(row.target_fiber_min || (role === 'ayah' ? 28 : 25)),
+          target_uric_acid_max: Number(row.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5)),
           target_cholesterol_lab_max: Number(row.target_cholesterol_lab_max || 190),
         };
       }

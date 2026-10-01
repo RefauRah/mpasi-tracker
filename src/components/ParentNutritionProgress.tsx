@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ParentProfile, ParentRole, AITargetAssessment, ParentLabCheck } from '@/lib/types';
 import { calculateDailyHealthEstimation } from '@/lib/health-estimation';
+import { calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 import ParentHealthEstimationCard from './ParentHealthEstimationCard';
 import {
   Flame,
@@ -16,6 +17,7 @@ import {
   AlertTriangle,
   Leaf,
   Brain,
+  Target,
 } from 'lucide-react';
 
 interface ParentNutritionSummary {
@@ -81,12 +83,19 @@ export default function ParentNutritionProgress({
     }
   };
 
-  // Calculations with AI dynamic targets
+  // Calculations with AI dynamic targets & Broca/Mifflin-St Jeor ideal calorie targets
+  const idealNutrition = calculateParentIdealNutrition({
+    role,
+    weight: profile.weight || (role === 'ayah' ? 74 : 58),
+    height: profile.height || (role === 'ayah' ? 173 : 160),
+    age: profile.age || (role === 'ayah' ? 34 : 32),
+  });
+
   const maxCholesterol = aiAssessment?.adjusted_cholesterol_max ?? (profile.target_cholesterol_max || 200);
-  const maxPurine = aiAssessment?.adjusted_purine_max ?? (profile.target_purine_max || 400);
-  const targetFiber = aiAssessment?.adjusted_fiber_min ?? (profile.target_fiber_min || 25);
+  const maxPurine = aiAssessment?.adjusted_purine_max ?? (profile.target_purine_max || (role === 'ayah' ? 400 : 350));
+  const targetFiber = aiAssessment?.adjusted_fiber_min ?? (profile.target_fiber_min || (role === 'ayah' ? 28 : 25));
   const targetWater = aiAssessment?.adjusted_water_glasses ?? 8;
-  const targetCalories = profile.target_calories || (role === 'ayah' ? 2000 : 1700);
+  const targetCalories = profile.target_calories || idealNutrition.targetCalories;
 
   const cholPercent = Math.min(100, Math.round((summary.cholesterol / maxCholesterol) * 100));
   const purinePercent = Math.min(100, Math.round((summary.purine / maxPurine) * 100));
@@ -231,22 +240,35 @@ export default function ParentNutritionProgress({
         </div>
 
         {/* Total Kalori */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs font-semibold">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-[var(--text-main)] flex items-center gap-1">
               <Flame size={14} className="text-orange-500" />
-              Total Energi / Kalori:
+              <span>Target Kalori Harian Menuju Ideal:</span>
             </span>
-            <span className="text-[var(--text-muted)]">
-              {summary.calories} / {targetCalories} kkal ({calPercent}%)
-            </span>
+            <div className="flex items-center gap-1.5">
+              {idealNutrition.calorieAdjustment !== 0 && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-0.5">
+                  <Target size={10} />
+                  {idealNutrition.calorieAdjustment > 0 ? `+${idealNutrition.calorieAdjustment}` : idealNutrition.calorieAdjustment} kkal
+                </span>
+              )}
+              <span className="text-[var(--text-muted)]">
+                {summary.calories} / {targetCalories} kkal ({calPercent}%)
+              </span>
+            </div>
           </div>
           <div className="w-full bg-[var(--bg-secondary)] h-2 rounded-full overflow-hidden">
             <div
-              className="bg-orange-500 h-full rounded-full transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${
+                calPercent > 105 ? 'bg-red-500' : 'bg-orange-500'
+              }`}
               style={{ width: `${calPercent}%` }}
             />
           </div>
+          <p className="text-[10px] text-[var(--text-muted)] italic">
+            💡 {idealNutrition.calorieStrategy}
+          </p>
         </div>
 
         {/* Macro Mini Grid */}

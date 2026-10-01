@@ -1,41 +1,32 @@
 import { NextResponse } from 'next/server';
 import { getDbClient, initDb } from '@/lib/db';
 import { ParentProfile, ParentRole } from '@/lib/types';
+import { calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 
 export const dynamic = 'force-dynamic';
 
-const defaultProfiles: Record<ParentRole, ParentProfile> = {
-  ayah: {
-    id: 1,
-    role: 'ayah',
-    name: 'Ayah',
-    age: 34,
-    gender: 'pria',
-    weight: 74,
-    height: 173,
-    target_calories: 2000,
+function getDefaultProfile(role: ParentRole): ParentProfile {
+  const age = role === 'ayah' ? 34 : 32;
+  const weight = role === 'ayah' ? 74 : 58;
+  const height = role === 'ayah' ? 173 : 160;
+  const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+
+  return {
+    id: role === 'ayah' ? 1 : 2,
+    role,
+    name: role === 'ayah' ? 'Ayah' : 'Ibu',
+    age,
+    gender: role === 'ayah' ? 'pria' : 'wanita',
+    weight,
+    height,
+    target_calories: ideal.targetCalories,
     target_cholesterol_max: 200,
-    target_purine_max: 400,
-    target_fiber_min: 28,
-    target_uric_acid_max: 6.5,
+    target_purine_max: role === 'ayah' ? 400 : 350,
+    target_fiber_min: role === 'ayah' ? 28 : 25,
+    target_uric_acid_max: role === 'ayah' ? 6.5 : 5.5,
     target_cholesterol_lab_max: 190,
-  },
-  ibu: {
-    id: 2,
-    role: 'ibu',
-    name: 'Ibu',
-    age: 32,
-    gender: 'wanita',
-    weight: 58,
-    height: 160,
-    target_calories: 1700,
-    target_cholesterol_max: 200,
-    target_purine_max: 350,
-    target_fiber_min: 25,
-    target_uric_acid_max: 5.5,
-    target_cholesterol_lab_max: 190,
-  },
-};
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -44,7 +35,7 @@ export async function GET(request: Request) {
 
     const db = await getDbClient();
     if (!db) {
-      return NextResponse.json(defaultProfiles[role] || defaultProfiles.ayah);
+      return NextResponse.json(getDefaultProfile(role));
     }
 
     await initDb();
@@ -54,30 +45,35 @@ export async function GET(request: Request) {
     });
 
     if (res.rows.length === 0) {
-      return NextResponse.json(defaultProfiles[role] || defaultProfiles.ayah);
+      return NextResponse.json(getDefaultProfile(role));
     }
 
     const row = res.rows[0];
+    const age = Number(row.age || (role === 'ayah' ? 34 : 32));
+    const weight = Number(row.weight || (role === 'ayah' ? 74 : 58));
+    const height = Number(row.height || (role === 'ayah' ? 173 : 160));
+    const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+
     const profile: ParentProfile = {
       id: Number(row.id),
       role: row.role as ParentRole,
       name: String(row.name),
-      age: Number(row.age || 34),
+      age,
       gender: row.gender as 'pria' | 'wanita',
-      weight: Number(row.weight || 70),
-      height: Number(row.height || 170),
-      target_calories: Number(row.target_calories || 2000),
+      weight,
+      height,
+      target_calories: Number(row.target_calories) || ideal.targetCalories,
       target_cholesterol_max: Number(row.target_cholesterol_max || 200),
-      target_purine_max: Number(row.target_purine_max || 400),
-      target_fiber_min: Number(row.target_fiber_min || 25),
-      target_uric_acid_max: Number(row.target_uric_acid_max || 6.5),
+      target_purine_max: Number(row.target_purine_max || (role === 'ayah' ? 400 : 350)),
+      target_fiber_min: Number(row.target_fiber_min || (role === 'ayah' ? 28 : 25)),
+      target_uric_acid_max: Number(row.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5)),
       target_cholesterol_lab_max: Number(row.target_cholesterol_lab_max || 190),
     };
 
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Error fetching parent profile:', error);
-    return NextResponse.json(defaultProfiles.ayah);
+    return NextResponse.json(getDefaultProfile('ayah'));
   }
 }
 

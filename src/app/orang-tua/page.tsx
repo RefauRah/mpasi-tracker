@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import ParentMealInput from '@/components/ParentMealInput';
 import ParentNutritionProgress from '@/components/ParentNutritionProgress';
 import ParentAITargetsBanner from '@/components/ParentAITargetsBanner';
@@ -9,6 +10,7 @@ import ParentLabSection from '@/components/ParentLabSection';
 import ParentHealthChart from '@/components/ParentHealthChart';
 import ParentRecommendationCard from '@/components/ParentRecommendationCard';
 import Pagination from '@/components/Pagination';
+import { calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 import {
   ParentMeal,
   ParentProfile,
@@ -28,6 +30,11 @@ import {
   ShieldAlert,
   Flame,
   User,
+  Scale,
+  Target,
+  ArrowUpRight,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
@@ -93,6 +100,16 @@ export default function OrangTuaDashboard() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Calculate clinical BMI and Broca Ideal Weight synchronized with Profil
+  const parentIdeal = useMemo(() => {
+    return calculateParentIdealNutrition({
+      role,
+      weight: profile?.weight || (role === 'ayah' ? 74 : 58),
+      height: profile?.height || (role === 'ayah' ? 173 : 160),
+      age: profile?.age || (role === 'ayah' ? 34 : 32),
+    });
+  }, [role, profile?.weight, profile?.height, profile?.age]);
 
   // Reset meals page when meals change or role changes
   useEffect(() => {
@@ -198,14 +215,24 @@ export default function OrangTuaDashboard() {
             </div>
           </div>
 
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="p-2.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border-color)] transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/profil?tab=${role}`}
+              className="p-2.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border-color)] transition-colors flex items-center gap-1 text-xs font-bold"
+              title="Kelola Profil & Pengaturan"
+            >
+              <span>Ubah Profil</span>
+              <ArrowUpRight size={14} />
+            </Link>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="p-2.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border-color)] transition-colors"
+              title="Refresh Data"
+            >
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Big Role Switcher */}
@@ -234,6 +261,91 @@ export default function OrangTuaDashboard() {
             <span>👩 Profil Ibu</span>
             {role === 'ibu' && <span className="w-2 h-2 rounded-full bg-white animate-pulse" />}
           </button>
+        </div>
+
+        {/* Physical Body Status & Clinical BMI / Broca Ideal Weight Card */}
+        <div className="p-3.5 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] space-y-2.5">
+          <div className="flex items-center justify-between border-b border-[var(--border-color)]/60 pb-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]">
+              <Scale size={15} className="text-emerald-600" />
+              <span>Status Fisik & Target Berat Badan Ideal</span>
+            </div>
+            <span
+              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                parentIdeal.bmiCategory === 'ideal'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : parentIdeal.bmiCategory === 'kelebihan'
+                  ? 'bg-amber-100 text-amber-800'
+                  : parentIdeal.bmiCategory === 'obesitas'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}
+            >
+              {parentIdeal.bmiCategory === 'ideal'
+                ? '✅ BMI Ideal'
+                : parentIdeal.bmiCategory === 'kelebihan'
+                ? '⚠️ Kelebihan Berat Badan'
+                : parentIdeal.bmiCategory === 'obesitas'
+                ? '🚨 Obesitas'
+                : 'ℹ️ Kurang Berat Badan'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-muted)] block">Fisik & BMI:</span>
+              <strong className="text-xs font-extrabold text-[var(--text-main)] block">
+                {profile?.weight || (role === 'ayah' ? 74 : 58)} kg • {profile?.height || (role === 'ayah' ? 173 : 160)} cm
+              </strong>
+              <span className="text-[10px] font-bold text-[var(--accent-gold)]">
+                {parentIdeal.bmi} BMI (Asia-Pasifik)
+              </span>
+            </div>
+
+            <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-muted)] block">BBI (Formula Broca):</span>
+              <strong className="text-xs font-extrabold text-emerald-700 block">
+                {parentIdeal.idealWeightBroca} kg
+              </strong>
+              <span className="text-[10px] text-[var(--text-muted)]">
+                Rentang: {parentIdeal.idealWeightRange.min}-{parentIdeal.idealWeightRange.max} kg
+              </span>
+            </div>
+
+            <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-muted)] block">Selisih Berat:</span>
+              <strong
+                className={`text-xs font-extrabold block ${
+                  parentIdeal.weightDifference > 0
+                    ? 'text-amber-700'
+                    : parentIdeal.weightDifference < 0
+                    ? 'text-blue-700'
+                    : 'text-emerald-700'
+                }`}
+              >
+                {parentIdeal.weightDifference > 0
+                  ? `+${parentIdeal.weightDifference} kg`
+                  : parentIdeal.weightDifference < 0
+                  ? `${parentIdeal.weightDifference} kg`
+                  : '0.0 kg (Ideal)'}
+              </strong>
+              <span className="text-[10px] text-[var(--text-muted)]">
+                {parentIdeal.weightDifference > 0 ? 'Perlu penurunan aman' : parentIdeal.weightDifference < 0 ? 'Perlu kenaikan bertahap' : 'Pertahankan'}
+              </span>
+            </div>
+
+            <div className="p-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+              <span className="text-[10px] text-[var(--text-muted)] block">Target Kalori AI:</span>
+              <strong className="text-xs font-extrabold text-orange-600 block">
+                {parentIdeal.targetCalories} kkal/hari
+              </strong>
+              <span className="text-[10px] font-bold text-amber-700">
+                {parentIdeal.calorieAdjustment !== 0
+                  ? `${parentIdeal.calorieAdjustment > 0 ? `+${parentIdeal.calorieAdjustment}` : parentIdeal.calorieAdjustment} kkal (Roadmap)`
+                  : 'Maintenance TDEE'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
