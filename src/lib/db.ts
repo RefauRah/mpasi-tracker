@@ -161,9 +161,19 @@ export async function initDb() {
         target_fiber_min INTEGER DEFAULT 25,
         target_uric_acid_max REAL DEFAULT 6.5,
         target_cholesterol_lab_max REAL DEFAULT 190,
+        special_condition TEXT DEFAULT 'none',
+        notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Ensure new columns exist on existing databases
+    try {
+      await db.execute("ALTER TABLE parent_profiles ADD COLUMN special_condition TEXT DEFAULT 'none'");
+    } catch {}
+    try {
+      await db.execute('ALTER TABLE parent_profiles ADD COLUMN notes TEXT');
+    } catch {}
 
     await db.execute(`
       CREATE TABLE IF NOT EXISTS parent_meals (

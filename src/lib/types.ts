@@ -123,6 +123,15 @@ export interface TBMedicationStats {
 
 export type ParentRole = 'ayah' | 'ibu';
 
+export type ParentSpecialCondition =
+  | 'none'
+  | 'menyusui_eksklusif' // Ibu Menyusui Eksklusif 0-6 bulan (+450 kkal, hidrasi +3 gelas)
+  | 'menyusui_lanjutan'  // Ibu Menyusui Lanjutan 6-24 bulan (+400 kkal, hidrasi +2 gelas)
+  | 'hamil'              // Ibu Hamil (+300 kkal)
+  | 'atlet_pekerja_keras' // Pekerja fisik berat / olahraga intens (+350 kkal)
+  | 'hipertensi_asam_urat' // Fokus restriksi asam urat & kolesterol
+  | 'lansia_pemulihan';   // Pemulihan pasca sakit
+
 export interface ParentProfile {
   id: number;
   role: ParentRole;
@@ -131,12 +140,14 @@ export interface ParentProfile {
   gender: 'pria' | 'wanita';
   weight: number; // kg
   height: number; // cm
-  target_calories: number; // default 2000 for ayah, 1700 for ibu
+  target_calories: number; // default calculated with Mifflin-St Jeor + Broca roadmap
   target_cholesterol_max: number; // max mg per day, default 200
   target_purine_max: number; // max mg per day, default 400
   target_fiber_min: number; // min g per day, default 25-30
   target_uric_acid_max: number; // target blood level, default 6.5 mg/dL (pria) / 5.5 mg/dL (wanita)
   target_cholesterol_lab_max: number; // target total blood cholesterol, default 190 mg/dL
+  special_condition?: ParentSpecialCondition;
+  notes?: string;
   created_at?: string;
 }
 
@@ -270,6 +281,9 @@ export interface ParentIdealNutrition {
   tdeeMaintenance: number;
   targetCalories: number;
   calorieAdjustment: number;
+  conditionCaloriesBonus?: number;
+  conditionWaterBonusGlasses?: number;
+  conditionAdjustmentLabel?: string;
   calorieStrategy: string;
   explanation: string;
 }

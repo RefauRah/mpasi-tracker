@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DataTransferModal from '@/components/DataTransferModal';
-import { Baby, ParentProfile, ParentRole, AITargetAssessment } from '@/lib/types';
+import { Baby, ParentProfile, ParentRole, AITargetAssessment, ParentSpecialCondition } from '@/lib/types';
 import { calculateAgeInMonths, formatAge, calculateParentIdealNutrition } from '@/lib/nutrition-targets';
 import {
   Baby as BabyIcon,
@@ -28,6 +28,7 @@ import {
   TrendingDown,
   TrendingUp,
   Target,
+  FileText,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -55,10 +56,13 @@ export default function ProfilePage() {
   const [parentFiberMin, setParentFiberMin] = useState<number>(25);
   const [parentUricAcidLabMax, setParentUricAcidLabMax] = useState<number>(6.5);
   const [parentCholesterolLabMax, setParentCholesterolLabMax] = useState<number>(190);
+  const [parentCondition, setParentCondition] = useState<ParentSpecialCondition>('none');
+  const [parentNotes, setParentNotes] = useState<string>('');
   const [parentSaving, setParentSaving] = useState(false);
   const [parentMsg, setParentMsg] = useState('');
   const [aiAssessment, setAiAssessment] = useState<AITargetAssessment | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [manualAiSyncing, setManualAiSyncing] = useState(false);
 
   // Fetch Baby
   useEffect(() => {
@@ -76,7 +80,7 @@ export default function ProfilePage() {
       .finally(() => setBabyLoading(false));
   }, []);
 
-  // Fetch Parent when tab changes or role changes
+  // Fetch Parent when tab changes or role changes (fast load, no unnecessary AI calls)
   const fetchParentProfile = async (role: ParentRole) => {
     try {
       setAiLoading(true);
@@ -96,11 +100,23 @@ export default function ProfilePage() {
         const ageVal = profileData.age || (role === 'ayah' ? 34 : 32);
         const weightVal = profileData.weight || (role === 'ayah' ? 74 : 58);
         const heightVal = profileData.height || (role === 'ayah' ? 173 : 160);
+        const condVal: ParentSpecialCondition = profileData.special_condition || (role === 'ibu' ? 'menyusui_eksklusif' : 'none');
+        const notesVal = profileData.notes || '';
+
         setParentAge(ageVal);
         setParentWeight(weightVal);
         setParentHeight(heightVal);
+        setParentCondition(condVal);
+        setParentNotes(notesVal);
 
-        const idealNutr = calculateParentIdealNutrition({ role, weight: weightVal, height: heightVal, age: ageVal });
+        const idealNutr = calculateParentIdealNutrition({
+          role,
+          weight: weightVal,
+          height: heightVal,
+          age: ageVal,
+          specialCondition: condVal,
+          notes: notesVal,
+        });
         setParentCalories(idealNutr.targetCalories);
         
         // If AI assessment has lab data, prioritize the AI adjusted targets
@@ -121,6 +137,29 @@ export default function ProfilePage() {
       console.error('Error loading parent profile or AI targets:', err);
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  // Manual Trigger for AI Target Assessment (Invoked on explicit button click only)
+  const handleManualAISync = async () => {
+    try {
+      setManualAiSyncing(true);
+      setParentMsg('');
+      const res = await fetch(`/api/parents/ai-targets?role=${parentRole}&force=true`);
+      const data = await res.json();
+      if (res.ok && data && !('error' in data)) {
+        const assessment = data as AITargetAssessment;
+        setAiAssessment(assessment);
+        setParentCholesterolMax(assessment.adjusted_cholesterol_max);
+        setParentPurineMax(assessment.adjusted_purine_max);
+        setParentFiberMin(assessment.adjusted_fiber_min);
+        setParentMsg('✨ Target AI berhasil dihitung & disinkronkan dari hasil lab!');
+        setTimeout(() => setParentMsg(''), 4000);
+      }
+    } catch (err) {
+      console.error('Error manual AI sync:', err);
+    } finally {
+      setManualAiSyncing(false);
     }
   };
 
@@ -193,6 +232,8 @@ export default function ProfilePage() {
           target_fiber_min: Number(parentFiberMin),
           target_uric_acid_max: Number(parentUricAcidLabMax),
           target_cholesterol_lab_max: Number(parentCholesterolLabMax),
+          special_condition: parentCondition,
+          notes: parentNotes,
         }),
       });
 
@@ -210,12 +251,14 @@ export default function ProfilePage() {
   const ageMonths = babyBirthDate ? calculateAgeInMonths(babyBirthDate) : 8;
   const ageText = formatAge(ageMonths);
 
-  // BMI and Ideal Nutrition Calculation for parents
+  // BMI and Ideal Nutrition Calculation for parents (with condition adaptations)
   const parentIdealNutrition = calculateParentIdealNutrition({
     role: parentRole,
     weight: Number(parentWeight),
     height: Number(parentHeight),
     age: Number(parentAge),
+    specialCondition: parentCondition,
+    notes: parentNotes,
   });
 
   return (
@@ -584,61 +627,157 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* AI Auto-Target Recommendation Banner */}
-              {aiAssessment && aiAssessment.hasLabData ? (
-                <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-blue-50/80 border border-indigo-200/80 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Brain size={16} className="text-indigo-600" />
-                      <span className="text-xs font-bold text-indigo-950 flex items-center gap-1">
-                        <Sparkles size={12} className="text-amber-500" />
-                        Target Otomatis AI (Dari Cek Darah Terakhir: {aiAssessment.labDate})
-                      </span>
-                    </div>
-                    <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                        aiAssessment.phase === 'pemulihan_ketat'
-                          ? 'bg-red-500 text-white'
-                          : aiAssessment.phase === 'pencegahan_waspada'
-                          ? 'bg-amber-500 text-white'
-                          : 'bg-emerald-600 text-white'
-                      }`}
+              {/* Kondisi Khusus & Catatan Kesehatan (Menyusui, Hamil, Aktivitas, dsb) */}
+              <div className="p-3.5 bg-gradient-to-br from-amber-50/70 via-rose-50/40 to-indigo-50/50 rounded-2xl border border-amber-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]">
+                    <HeartPulse size={15} className="text-rose-600" />
+                    <span>Kondisi Khusus & Catatan Kesehatan</span>
+                  </div>
+                  {parentIdealNutrition.conditionAdjustmentLabel && (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse">
+                      {parentIdealNutrition.conditionAdjustmentLabel}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
+                      Kondisi Fisiologis Khusus:
+                    </label>
+                    <select
+                      value={parentCondition}
+                      onChange={(e) => {
+                        const val = e.target.value as ParentSpecialCondition;
+                        setParentCondition(val);
+                        const ideal = calculateParentIdealNutrition({
+                          role: parentRole,
+                          weight: parentWeight,
+                          height: parentHeight,
+                          age: parentAge,
+                          specialCondition: val,
+                          notes: parentNotes,
+                        });
+                        setParentCalories(ideal.targetCalories);
+                      }}
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-main)] font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
                     >
-                      {aiAssessment.phase === 'pemulihan_ketat'
-                        ? '🚨 Restriksi Ketat'
-                        : aiAssessment.phase === 'pencegahan_waspada'
-                        ? '⚠️ Waspada'
-                        : '✅ Normal'}
+                      <option value="none">Normal / Sehat Umum</option>
+                      <option value="menyusui_eksklusif">🤱 Ibu Menyusui Eksklusif (0-6 Bulan: +450 kkal, +3 Gelas Air)</option>
+                      <option value="menyusui_lanjutan">🤱 Ibu Menyusui Lanjutan (&gt;6 Bulan: +400 kkal, +2 Gelas Air)</option>
+                      <option value="hamil">🤰 Ibu Hamil (+300 kkal, +2 Gelas Air)</option>
+                      <option value="atlet_pekerja_keras">🏋️ Aktivitas Fisik / Beban Kerja Berat (+350 kkal)</option>
+                      <option value="hipertensi_asam_urat">🩺 Riwayat Asam Urat & Hipertensi (Restriksi Ekstra)</option>
+                      <option value="lansia_pemulihan">🍵 Fase Pemulihan Kesehatan (+150 kkal)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1">
+                      Catatan Tambahan untuk AI:
+                    </label>
+                    <input
+                      type="text"
+                      value={parentNotes}
+                      placeholder="Contoh: Menyusui bayi 4 bulan, sering pegal sendi, alergi udang..."
+                      onChange={(e) => {
+                        setParentNotes(e.target.value);
+                      }}
+                      className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
+                    />
+                  </div>
+                </div>
+
+                {parentCondition !== 'none' && (
+                  <p className="text-[11px] text-rose-950 font-medium leading-relaxed bg-white/70 p-2 rounded-xl border border-rose-100">
+                    💡 <strong>Adaptasi AI:</strong> Target kalori disesuaikan otomatis dengan tambahan{' '}
+                    <strong>+{parentIdealNutrition.conditionCaloriesBonus} kkal</strong> dan target hidrasi{' '}
+                    <strong>+{parentIdealNutrition.conditionWaterBonusGlasses} gelas air/hari</strong> untuk mendukung kondisi{' '}
+                    {parentCondition.replace('_', ' ')}.
+                  </p>
+                )}
+              </div>
+
+              {/* AI Auto-Target Recommendation Banner */}
+              <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-blue-50/80 border border-indigo-200/80 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Brain size={16} className="text-indigo-600" />
+                    <span className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                      <Sparkles size={12} className="text-amber-500" />
+                      Target Otomatis AI (Dari Cek Darah Terakhir: {aiAssessment?.labDate || 'Belum Ada'})
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-indigo-900 leading-relaxed">
-                    Berdasarkan Lab Asam Urat (<strong>{aiAssessment.uricAcid} mg/dL</strong>) & Kolesterol (<strong>{aiAssessment.totalCholesterol} mg/dL</strong>), AI telah menyetel target harian di bawah secara otomatis.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    {aiAssessment && (
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          aiAssessment.phase === 'pemulihan_ketat'
+                            ? 'bg-red-500 text-white'
+                            : aiAssessment.phase === 'pencegahan_waspada'
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-emerald-600 text-white'
+                        }`}
+                      >
+                        {aiAssessment.phase === 'pemulihan_ketat'
+                          ? '🚨 Restriksi Ketat'
+                          : aiAssessment.phase === 'pencegahan_waspada'
+                          ? '⚠️ Waspada'
+                          : '✅ Normal'}
+                      </span>
+                    )}
 
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
-                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Max Purin AI:</span>
-                      <strong className="text-amber-700 text-xs">{aiAssessment.adjusted_purine_max} mg</strong>
-                    </div>
-                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Max Kolesterol AI:</span>
-                      <strong className="text-rose-700 text-xs">{aiAssessment.adjusted_cholesterol_max} mg</strong>
-                    </div>
-                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
-                      <span className="text-[var(--text-muted)] block text-[9px]">Min Serat AI:</span>
-                      <strong className="text-emerald-700 text-xs">{aiAssessment.adjusted_fiber_min} g</strong>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleManualAISync}
+                      disabled={manualAiSyncing}
+                      className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold flex items-center gap-1 transition-all shadow-xs disabled:opacity-50"
+                      title="Hitung ulang evaluasi AI secara manual"
+                    >
+                      {manualAiSyncing ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>Menganalisis...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={12} />
+                          <span>Sinkronkan AI</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-2xl flex items-start gap-2 text-[11px] text-amber-900">
-                  <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                  <p>
-                    Belum ada riwayat hasil cek darah untuk {activeTab === 'ayah' ? 'Ayah' : 'Ibu'}. Target di bawah menggunakan batas standar. Begitu hasil cek lab dimasukkan di menu Orang Tua, AI akan otomatis menghitung dan menyesuaikan batas purin serta kolesterol di sini.
+
+                {aiAssessment && aiAssessment.hasLabData ? (
+                  <>
+                    <p className="text-[11px] text-indigo-900 leading-relaxed">
+                      Berdasarkan Lab Asam Urat (<strong>{aiAssessment.uricAcid} mg/dL</strong>) & Kolesterol (<strong>{aiAssessment.totalCholesterol} mg/dL</strong>), AI telah menyetel target harian di bawah secara otomatis.
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                      <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                        <span className="text-[var(--text-muted)] block text-[9px]">Max Purin AI:</span>
+                        <strong className="text-amber-700 text-xs">{aiAssessment.adjusted_purine_max} mg</strong>
+                      </div>
+                      <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                        <span className="text-[var(--text-muted)] block text-[9px]">Max Kolesterol AI:</span>
+                        <strong className="text-rose-700 text-xs">{aiAssessment.adjusted_cholesterol_max} mg</strong>
+                      </div>
+                      <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                        <span className="text-[var(--text-muted)] block text-[9px]">Min Serat AI:</span>
+                        <strong className="text-emerald-700 text-xs">{aiAssessment.adjusted_fiber_min} g</strong>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-indigo-800 leading-relaxed">
+                    Belum ada riwayat hasil cek darah untuk {activeTab === 'ayah' ? 'Ayah' : 'Ibu'}. Target menggunakan batas standar. Klik tombol <strong>Sinkronkan AI</strong> untuk menghitung ulang target kapan saja.
                   </p>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Daily Nutrition Intake Targets (AI-managed & Locked) */}
               <div className="space-y-3 pt-2">

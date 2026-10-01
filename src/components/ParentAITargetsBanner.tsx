@@ -20,9 +20,16 @@ import {
 interface ParentAITargetsBannerProps {
   assessment: AITargetAssessment | null;
   loading?: boolean;
+  onManualSync?: () => void;
+  isSyncing?: boolean;
 }
 
-export default function ParentAITargetsBanner({ assessment, loading }: ParentAITargetsBannerProps) {
+export default function ParentAITargetsBanner({
+  assessment,
+  loading,
+  onManualSync,
+  isSyncing = false,
+}: ParentAITargetsBannerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (loading) {
@@ -76,14 +83,29 @@ export default function ParentAITargetsBanner({ assessment, loading }: ParentAIT
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
-          title="Detail Penyesuaian AI"
-        >
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onManualSync && (
+            <button
+              type="button"
+              onClick={onManualSync}
+              disabled={isSyncing}
+              className="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold flex items-center gap-1 transition-all shadow-xs disabled:opacity-50"
+              title="Analisis & Sinkronkan Target AI dari Lab Terbaru"
+            >
+              <Sparkles size={12} className={isSyncing ? 'animate-spin' : ''} />
+              <span>{isSyncing ? 'Menganalisis...' : 'Sinkronkan AI'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
+            title="Detail Penyesuaian AI"
+          >
+            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
       </div>
 
       {/* Target Metrics Cards Grid */}

@@ -48,6 +48,7 @@ export default function OrangTuaDashboard() {
   const [recommendations, setRecommendations] = useState<ParentRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isAiSyncing, setIsAiSyncing] = useState(false);
 
   // Pagination for meals
   const [mealsPage, setMealsPage] = useState(1);
@@ -101,15 +102,33 @@ export default function OrangTuaDashboard() {
     fetchData();
   }, [fetchData]);
 
-  // Calculate clinical BMI and Broca Ideal Weight synchronized with Profil
+  // Calculate clinical BMI and Broca Ideal Weight synchronized with Profil & Special Condition
   const parentIdeal = useMemo(() => {
     return calculateParentIdealNutrition({
       role,
       weight: profile?.weight || (role === 'ayah' ? 74 : 58),
       height: profile?.height || (role === 'ayah' ? 173 : 160),
       age: profile?.age || (role === 'ayah' ? 34 : 32),
+      specialCondition: profile?.special_condition,
+      notes: profile?.notes,
     });
-  }, [role, profile?.weight, profile?.height, profile?.age]);
+  }, [role, profile?.weight, profile?.height, profile?.age, profile?.special_condition, profile?.notes]);
+
+  // Manual trigger for AI Target sync on explicit user request
+  const handleManualAISync = async () => {
+    setIsAiSyncing(true);
+    try {
+      const res = await fetch(`/api/parents/ai-targets?role=${role}&force=true`);
+      const data = await res.json();
+      if (data && !data.error) {
+        setAiAssessment(data);
+      }
+    } catch (err) {
+      console.error('Error manual AI sync:', err);
+    } finally {
+      setIsAiSyncing(false);
+    }
+  };
 
   // Reset meals page when meals change or role changes
   useEffect(() => {
@@ -346,11 +365,30 @@ export default function OrangTuaDashboard() {
               </span>
             </div>
           </div>
+
+          {profile?.special_condition && profile.special_condition !== 'none' && (
+            <div className="p-2.5 bg-rose-50/80 rounded-xl border border-rose-200/80 flex items-center justify-between text-xs text-rose-900">
+              <div className="flex items-center gap-1.5 font-bold">
+                <span>🤱</span>
+                <span>Kondisi Khusus: {parentIdeal.conditionAdjustmentLabel || profile.special_condition}</span>
+              </div>
+              {profile.notes && (
+                <span className="text-[10px] text-rose-700 italic truncate max-w-[200px]">
+                  &quot;{profile.notes}&quot;
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* AI Dynamic Target Assessment Banner (Automatic from Blood Lab Results) */}
-      <ParentAITargetsBanner assessment={aiAssessment} loading={loading} />
+      {/* AI Dynamic Target Assessment Banner (Automatic from Blood Lab Results with manual trigger) */}
+      <ParentAITargetsBanner
+        assessment={aiAssessment}
+        loading={loading}
+        onManualSync={handleManualAISync}
+        isSyncing={isAiSyncing}
+      />
 
       {/* Input Meal Form */}
       <ParentMealInput role={role} onMealAdded={fetchData} />

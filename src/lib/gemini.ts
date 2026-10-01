@@ -476,12 +476,35 @@ function generateMockParentRecommendations(role: ParentRole): ParentRecommendati
 export async function evaluateAITargetsFromLab(
   role: ParentRole,
   profile: ParentProfile,
-  latestLab: ParentLabCheck | null
+  latestLab: ParentLabCheck | null,
+  forceAI: boolean = false
 ): Promise<AITargetAssessment> {
   const isAyah = role === 'ayah';
   const roleName = isAyah ? 'Ayah' : 'Ibu';
+  const condition = profile.special_condition || 'none';
+  const isBusui = condition === 'menyusui_eksklusif' || condition === 'menyusui_lanjutan';
+  const isHamil = condition === 'hamil';
+
+  // Base water bonus from condition
+  const waterBonus = isBusui ? 3 : isHamil || condition === 'atlet_pekerja_keras' ? 2 : 0;
 
   if (!latestLab) {
+    let summary = `Belum ada data cek darah laboratorium. Target menggunakan batasan standar pemeliharaan kesehatan.`;
+    const directives = [
+      'Batasi makanan sangat tinggi purin seperti jeroan dan emping.',
+      'Pilih sumber lemak baik (ikan, minyak zaitun, alpukat).',
+      `Penuhi hidrasi minimal ${8 + waterBonus} gelas (${((8 + waterBonus) * 0.25).toFixed(1)} liter) air putih per hari.`,
+    ];
+    const recommendations = [
+      'Catat hasil tes darah berkala (asam urat & kolesterol) untuk penyesuaian target otomatis oleh AI.',
+    ];
+
+    if (isBusui) {
+      summary = `Ibu dalam kondisi menyusui (${condition === 'menyusui_eksklusif' ? 'ASI Eksklusif 0-6 bln' : 'Menyusui Lanjutan'}). Target kalori dan hidrasi dinaikkan untuk kelancaran ASI.`;
+      directives.unshift('Konsumsi makanan bergizi kaya protein, kalsium, zat besi, dan cairan cukup untuk menjaga kualitas ASI.');
+      recommendations.unshift('Sayur daun katuk, sup ayam kampung bening, oatmeal, almond, dan ikan segar rendah purin.');
+    }
+
     return {
       role,
       labDate: null,
@@ -493,18 +516,12 @@ export async function evaluateAITargetsFromLab(
       adjusted_purine_max: profile.target_purine_max || (isAyah ? 400 : 350),
       adjusted_cholesterol_max: profile.target_cholesterol_max || 200,
       adjusted_fiber_min: profile.target_fiber_min || (isAyah ? 28 : 25),
-      adjusted_water_glasses: 8,
+      adjusted_water_glasses: 8 + waterBonus,
       phase: 'pemeliharaan_normal',
-      title: `Target Standar ${roleName}`,
-      summary: `Belum ada data cek darah laboratorium. Target menggunakan batasan standar pemeliharaan kesehatan.`,
-      directives: [
-        'Batasi makanan sangat tinggi purin seperti jeroan dan emping.',
-        'Pilih sumber lemak baik (ikan, minyak zaitun, alpukat).',
-        'Penuhi hidrasi minimal 8 gelas (2 liter) air putih per hari.',
-      ],
-      recommendations: [
-        'Catat hasil tes darah berkala (asam urat & kolesterol) untuk penyesuaian target otomatis oleh AI.',
-      ],
+      title: isBusui ? `Target Gizi Busui Sehat ${roleName}` : `Target Standar ${roleName}`,
+      summary,
+      directives,
+      recommendations,
     };
   }
 
@@ -521,6 +538,7 @@ export async function evaluateAITargetsFromLab(
     uricAcidStatus = 'waspada';
   }
 
+  // Uric Acid and Cholesterol thresholds
   let cholesterolStatus: 'normal' | 'waspada' | 'tinggi' = 'normal';
   if (cholVal >= 240 || (latestLab.ldl_cholesterol && latestLab.ldl_cholesterol >= 160)) {
     cholesterolStatus = 'tinggi';
@@ -530,13 +548,13 @@ export async function evaluateAITargetsFromLab(
 
   // Adjusted Target computation
   let adjusted_purine_max = profile.target_purine_max || (isAyah ? 400 : 350);
-  let adjusted_water_glasses = 8;
+  let adjusted_water_glasses = 8 + waterBonus;
   if (uricAcidStatus === 'tinggi') {
     adjusted_purine_max = 180; // Strict restriction
-    adjusted_water_glasses = 11; // 2.75 L
+    adjusted_water_glasses = 11 + waterBonus;
   } else if (uricAcidStatus === 'waspada') {
     adjusted_purine_max = 280;
-    adjusted_water_glasses = 9; // 2.25 L
+    adjusted_water_glasses = 9 + waterBonus;
   }
 
   let adjusted_cholesterol_max = profile.target_cholesterol_max || 200;
@@ -556,21 +574,28 @@ export async function evaluateAITargetsFromLab(
     phase = 'pencegahan_waspada';
   }
 
-  // If Gemini API is available, ask Gemini for personalized nutritionist insights
-  if (apiKey) {
+  // Only invoke Gemini API when explicitly triggered by user manual button (forceAI === true)
+  if (forceAI && apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: geminiModel });
 
+      const conditionNote = isBusui
+        ? `Ibu sedang dalam kondisi MENYUSUI AKTIF (${condition === 'menyusui_eksklusif' ? 'ASI Eksklusif 0-6 bulan' : 'Menyusui Lanjutan'}). Pastikan pantangan tidak mengorbankan nutrisi dan suplai ASI si kecil.`
+        : isHamil
+        ? `Ibu sedang dalam kondisi HAMIL. Prioritaskan keselamatan janin dan nutrisi seimbang.`
+        : profile.notes ? `Catatan Kondisi Khusus: ${profile.notes}` : '';
+
       const prompt = `
-Kamu adalah Dokter Spesialis Gizi Klinis. Analisis hasil laboratorium darah terbaru untuk ${roleName}:
+Kamu adalah Dokter Spesialis Gizi Klinis & Konselor Nutrisi Laktasi. Analisis hasil laboratorium darah terbaru untuk ${roleName}:
+- Kondisi Spesifik: ${conditionNote || 'Normal'}
 - Tanggal Tes: ${latestLab.date}
 - Asam Urat: ${uricVal} mg/dL (Batas Normal ${roleName}: <= ${maxUricNormal} mg/dL) -> Status: ${uricAcidStatus.toUpperCase()}
 - Kolesterol Total: ${cholVal} mg/dL (Batas Normal: < 200 mg/dL) -> Status: ${cholesterolStatus.toUpperCase()}
 ${latestLab.ldl_cholesterol ? `- LDL: ${latestLab.ldl_cholesterol} mg/dL` : ''}
 ${latestLab.triglycerides ? `- Trigliserida: ${latestLab.triglycerides} mg/dL` : ''}
 ${latestLab.blood_pressure ? `- Tekanan Darah: ${latestLab.blood_pressure}` : ''}
-${latestLab.notes ? `- Catatan: ${latestLab.notes}` : ''}
+${latestLab.notes ? `- Catatan Hasil Lab: ${latestLab.notes}` : ''}
 
 Target Penyesuaian AI yang Ditetapkan:
 - Batas Maksimum Purin: ${adjusted_purine_max} mg/hari
@@ -580,11 +605,11 @@ Target Penyesuaian AI yang Ditetapkan:
 
 Berikan respon HANYA format JSON murni (raw JSON tanpa \`\`\`json markdown):
 {
-  "title": "Judul Evaluasi Singkat (contoh: 'Fase Pemulihan Ketat Asam Urat & Kolesterol')",
-  "summary": "Penjelasan ringkas 2 kalimat mengenai kondisi lab dan alasan penyesuaian target asupan harian ini.",
+  "title": "Judul Evaluasi Singkat (contoh: 'Fase Pemulihan Ketat Kolesterol untuk Ibu Menyusui')",
+  "summary": "Penjelasan ringkas 2 kalimat mengenai kondisi lab dan alasan penyesuaian target harian dengan mempertimbangkan kondisi menyusui/kesehatan.",
   "directives": [
     "Poin instruksi gizi 1 (pantangan / batasan spesifik)",
-    "Poin instruksi gizi 2 (prioritas makanan penurun kolesterol/asam urat)",
+    "Poin instruksi gizi 2 (prioritas makanan penurun kolesterol/asam urat yang aman)",
     "Poin instruksi hidrasi / gaya hidup"
   ],
   "recommendations": [
@@ -621,11 +646,16 @@ Berikan respon HANYA format JSON murni (raw JSON tanpa \`\`\`json markdown):
     }
   }
 
-  // Fallback clinical directives
+  // Fast rule-based clinical directives without external API latency on normal load
   const directives: string[] = [];
   const recommendations: string[] = [];
-  let title = `Pemeliharaan Normal ${roleName}`;
+  let title = isBusui ? `Target Gizi Busui Sehat ${roleName}` : `Pemeliharaan Normal ${roleName}`;
   let summary = `Hasil cek darah ${latestLab.date} berada dalam batas optimal. Target asupan tetap pada level pemeliharaan sehat.`;
+
+  if (isBusui) {
+    directives.push('Jaga produksi ASI dengan asupan gizi seimbang, cairan cukup, dan istirahat teratur.');
+    recommendations.push('Daun katuk, bayam, oatmeal, ikan kembung/gurame segar, pepaya, dan tahu/tempe kukus.');
+  }
 
   if (uricAcidStatus === 'tinggi' && cholesterolStatus === 'tinggi') {
     title = `Fase Pemulihan Ketat: Asam Urat & Kolesterol Tinggi`;
@@ -637,7 +667,7 @@ Berikan respon HANYA format JSON murni (raw JSON tanpa \`\`\`json markdown):
   } else if (uricAcidStatus === 'tinggi') {
     title = `Fase Penurunan Asam Urat Intensif`;
     summary = `Asam Urat ${roleName} tercatat ${uricVal} mg/dL (Tinggi > ${maxUricNormal}). AI membatasi asupan purin harian menjadi maks ${adjusted_purine_max} mg dan menaikkan target hidrasi.`;
-    directives.push('Hindari daging merah berlemak, jeroan, melinjo, kerang, dan alkohol/ragi.');
+    directives.push('Hindari daging merah berlemak, jeroan, melinjo, kerang, dan minuman tinggi fruktosa.');
     directives.push(`Tingkatkan minum air putih hingga ${adjusted_water_glasses} gelas/hari untuk melarutkan asam urat.`);
     recommendations.push('Pilih protein aman: telur, tahu, tempe porsi wajar, ikan air tawar, dan buah berry / jeruk.');
   } else if (cholesterolStatus === 'tinggi') {

@@ -117,15 +117,20 @@ export function getNutritionTarget(ageInMonths: number, mode: 'mpasi_only' | 'ak
   }
 }
 
+import { ParentSpecialCondition } from './types';
+
 /**
  * Menghitung BMI Asia-Pasifik, Berat Badan Ideal (BBI Broca & WHO),
- * BMR/TDEE Mifflin-St Jeor, serta Target Kalori Disesuaikan Menuju Berat Badan Ideal.
+ * BMR/TDEE Mifflin-St Jeor, serta Target Kalori Disesuaikan Menuju Berat Badan Ideal
+ * dengan adaptasi kondisi khusus (misal: Ibu Menyusui, Hamil, dsb).
  */
 export function calculateParentIdealNutrition(params: {
   role: 'ayah' | 'ibu';
   weight: number; // kg
   height: number; // cm
   age: number; // tahun
+  specialCondition?: ParentSpecialCondition;
+  notes?: string;
 }): {
   bmi: number;
   bmiCategory: 'kurus' | 'ideal' | 'kelebihan' | 'obesitas';
@@ -137,10 +142,13 @@ export function calculateParentIdealNutrition(params: {
   tdeeMaintenance: number;
   targetCalories: number;
   calorieAdjustment: number;
+  conditionCaloriesBonus: number;
+  conditionWaterBonusGlasses: number;
+  conditionAdjustmentLabel: string;
   calorieStrategy: string;
   explanation: string;
 } {
-  const { role, weight, height, age } = params;
+  const { role, weight, height, age, specialCondition = 'none' } = params;
   const w = Number(weight) || (role === 'ayah' ? 70 : 58);
   const h = Number(height) || (role === 'ayah' ? 170 : 160);
   const a = Number(age) || (role === 'ayah' ? 34 : 32);
@@ -166,8 +174,6 @@ export function calculateParentIdealNutrition(params: {
   }
 
   // 2. Berat Badan Ideal (BBI Broca / Kemenkes RI)
-  // Ayah (Pria): (TB - 100) - 10%
-  // Ibu (Wanita): (TB - 100) - 15%
   const bbiFactor = role === 'ayah' ? 0.9 : 0.85;
   const idealWeightBroca = Number(((h - 100) * bbiFactor).toFixed(1));
   const minIdealWeight = Number((18.5 * heightM * heightM).toFixed(1));
@@ -181,36 +187,74 @@ export function calculateParentIdealNutrition(params: {
       : 10 * w + 6.25 * h - 5 * a - 161;
   const tdeeMaintenance = Math.round(bmr * 1.35); // Faktor aktivitas harian 1.35
 
-  // 4. Penyesuaian Kalori Menuju Berat Badan Ideal
-  let calorieAdjustment = 0;
+  // 4. Penyesuaian Kalori Dasar Menuju Berat Badan Ideal
+  let baseCalorieAdjustment = 0;
   let calorieStrategy = 'Pemeliharaan Berat Badan Ideal';
   let explanation = '';
 
   if (bmiCategory === 'obesitas') {
-    // Defisit terkontrol 400 kkal untuk penurunan bertahap aman ~0.4 kg/minggu
-    calorieAdjustment = -400;
-    calorieStrategy = 'Defisit Kalori Terkontrol (-400 kkal) Menuju BB Ideal';
-    explanation = `Berat saat ini (${w} kg) masuk kategori Obesitas. AI menetapkan target kalori defisit agar berat badan turun bertahap menuju ideal (${idealWeightBroca} kg) tanpa memicu lonjakan asam urat.`;
+    // Pada ibu menyusui eksklusif, defisit ditekan tidak boleh terlalu ekstrem agar produksi ASI tidak turun
+    baseCalorieAdjustment = specialCondition === 'menyusui_eksklusif' ? -200 : -400;
+    calorieStrategy = specialCondition === 'menyusui_eksklusif'
+      ? 'Defisit Ringan & Nutrisi ASI Terjaga Menuju BB Ideal'
+      : 'Defisit Kalori Terkontrol (-400 kkal) Menuju BB Ideal';
+    explanation = `Berat saat ini (${w} kg) masuk kategori Obesitas. Target kalori disesuaikan bertahap menuju ideal (${idealWeightBroca} kg) dengan tetap menjaga suplai nutrisi.`;
   } else if (bmiCategory === 'kelebihan') {
-    // Defisit moderat 250 kkal
-    calorieAdjustment = -250;
-    calorieStrategy = 'Defisit Moderat (-250 kkal) Menuju Rentang Ideal';
-    explanation = `Berat saat ini (${w} kg) sedikit di atas rentang ideal (${minIdealWeight}-${maxIdealWeight} kg). AI menyetel defisit moderat untuk mengembalikan berat ke zona ideal.`;
+    baseCalorieAdjustment = specialCondition === 'menyusui_eksklusif' ? -150 : -250;
+    calorieStrategy = specialCondition === 'menyusui_eksklusif'
+      ? 'Defisit Sangat Ringan Aman untuk ASI Menuju Ideal'
+      : 'Defisit Moderat (-250 kkal) Menuju Rentang Ideal';
+    explanation = `Berat saat ini (${w} kg) sedikit di atas rentang ideal (${minIdealWeight}-${maxIdealWeight} kg).`;
   } else if (bmiCategory === 'kurus') {
-    // Surplus 350 kkal
-    calorieAdjustment = +350;
+    baseCalorieAdjustment = +350;
     calorieStrategy = 'Surplus Sehat (+350 kkal) Menuju BB Ideal';
-    explanation = `Berat saat ini (${w} kg) di bawah rentang normal. AI menyetel surplus kalori bergizi agar berat naik menuju ideal (${idealWeightBroca} kg).`;
+    explanation = `Berat saat ini (${w} kg) di bawah rentang normal. Perlu asupan gizi ekstra agar berat naik menuju ideal (${idealWeightBroca} kg).`;
   } else {
-    // Ideal
-    calorieAdjustment = 0;
+    baseCalorieAdjustment = 0;
     calorieStrategy = 'Pemeliharaan Keseimbangan Energi Ideal';
-    explanation = `Berat saat ini (${w} kg) sudah berada dalam rentang ideal (${minIdealWeight}-${maxIdealWeight} kg). AI menjaga asupan kalori pada tingkat pemeliharaan optimal.`;
+    explanation = `Berat saat ini (${w} kg) sudah berada dalam rentang ideal (${minIdealWeight}-${maxIdealWeight} kg).`;
   }
 
+  // 5. Penyesuaian Kondisi Khusus (Ibu Menyusui, Hamil, Atlet, dsb)
+  let conditionCaloriesBonus = 0;
+  let conditionWaterBonusGlasses = 0;
+  let conditionAdjustmentLabel = '';
+
+  if (specialCondition === 'menyusui_eksklusif') {
+    conditionCaloriesBonus = 450;
+    conditionWaterBonusGlasses = 3;
+    conditionAdjustmentLabel = 'Ibu Menyusui Eksklusif (0-6 bln: +450 kkal, +3 gelas air)';
+    calorieStrategy += ' + Tambahan Kalori Busui (+450 kkal)';
+  } else if (specialCondition === 'menyusui_lanjutan') {
+    conditionCaloriesBonus = 400;
+    conditionWaterBonusGlasses = 2;
+    conditionAdjustmentLabel = 'Ibu Menyusui Lanjutan (>6 bln: +400 kkal, +2 gelas air)';
+    calorieStrategy += ' + Tambahan Kalori Busui (+400 kkal)';
+  } else if (specialCondition === 'hamil') {
+    conditionCaloriesBonus = 300;
+    conditionWaterBonusGlasses = 2;
+    conditionAdjustmentLabel = 'Ibu Hamil (+300 kkal, +2 gelas air)';
+    calorieStrategy += ' + Kebutuhan Janin (+300 kkal)';
+  } else if (specialCondition === 'atlet_pekerja_keras') {
+    conditionCaloriesBonus = 350;
+    conditionWaterBonusGlasses = 3;
+    conditionAdjustmentLabel = 'Aktivitas Fisik / Beban Kerja Berat (+350 kkal)';
+    calorieStrategy += ' + Energi Kerja Fisik (+350 kkal)';
+  } else if (specialCondition === 'hipertensi_asam_urat') {
+    conditionCaloriesBonus = 0;
+    conditionWaterBonusGlasses = 2;
+    conditionAdjustmentLabel = 'Fokus Restriksi Asam Urat & Kolesterol (+2 gelas air)';
+  } else if (specialCondition === 'lansia_pemulihan') {
+    conditionCaloriesBonus = 150;
+    conditionWaterBonusGlasses = 1;
+    conditionAdjustmentLabel = 'Pemulihan Stamina Tubuh (+150 kkal)';
+  }
+
+  const totalCalorieAdjustment = baseCalorieAdjustment + conditionCaloriesBonus;
+
   // Batas bawah aman kalori
-  const minSafeCalories = role === 'ayah' ? 1500 : 1250;
-  const targetCalories = Math.max(minSafeCalories, tdeeMaintenance + calorieAdjustment);
+  const minSafeCalories = role === 'ayah' ? 1500 : (specialCondition.startsWith('menyusui') ? 1600 : 1250);
+  const targetCalories = Math.max(minSafeCalories, tdeeMaintenance + totalCalorieAdjustment);
 
   return {
     bmi,
@@ -222,7 +266,10 @@ export function calculateParentIdealNutrition(params: {
     bmr: Math.round(bmr),
     tdeeMaintenance,
     targetCalories,
-    calorieAdjustment,
+    calorieAdjustment: totalCalorieAdjustment,
+    conditionCaloriesBonus,
+    conditionWaterBonusGlasses,
+    conditionAdjustmentLabel,
     calorieStrategy,
     explanation,
   };

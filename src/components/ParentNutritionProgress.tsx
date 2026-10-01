@@ -89,12 +89,14 @@ export default function ParentNutritionProgress({
     weight: profile.weight || (role === 'ayah' ? 74 : 58),
     height: profile.height || (role === 'ayah' ? 173 : 160),
     age: profile.age || (role === 'ayah' ? 34 : 32),
+    specialCondition: profile.special_condition,
+    notes: profile.notes,
   });
 
   const maxCholesterol = aiAssessment?.adjusted_cholesterol_max ?? (profile.target_cholesterol_max || 200);
   const maxPurine = aiAssessment?.adjusted_purine_max ?? (profile.target_purine_max || (role === 'ayah' ? 400 : 350));
   const targetFiber = aiAssessment?.adjusted_fiber_min ?? (profile.target_fiber_min || (role === 'ayah' ? 28 : 25));
-  const targetWater = aiAssessment?.adjusted_water_glasses ?? 8;
+  const targetWater = aiAssessment?.adjusted_water_glasses ?? (8 + (idealNutrition.conditionWaterBonusGlasses || 0));
   const targetCalories = profile.target_calories || idealNutrition.targetCalories;
 
   const cholPercent = Math.min(100, Math.round((summary.cholesterol / maxCholesterol) * 100));

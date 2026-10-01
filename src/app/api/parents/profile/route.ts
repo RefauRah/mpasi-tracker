@@ -9,7 +9,8 @@ function getDefaultProfile(role: ParentRole): ParentProfile {
   const age = role === 'ayah' ? 34 : 32;
   const weight = role === 'ayah' ? 74 : 58;
   const height = role === 'ayah' ? 173 : 160;
-  const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+  const special_condition = role === 'ibu' ? 'menyusui_eksklusif' : 'none';
+  const ideal = calculateParentIdealNutrition({ role, weight, height, age, specialCondition: special_condition });
 
   return {
     id: role === 'ayah' ? 1 : 2,
@@ -25,6 +26,8 @@ function getDefaultProfile(role: ParentRole): ParentProfile {
     target_fiber_min: role === 'ayah' ? 28 : 25,
     target_uric_acid_max: role === 'ayah' ? 6.5 : 5.5,
     target_cholesterol_lab_max: 190,
+    special_condition,
+    notes: role === 'ibu' ? 'Sedang dalam kondisi menyusui bayi (ASI Eksklusif)' : 'Kondisi fisik normal',
   };
 }
 
@@ -52,7 +55,9 @@ export async function GET(request: Request) {
     const age = Number(row.age || (role === 'ayah' ? 34 : 32));
     const weight = Number(row.weight || (role === 'ayah' ? 74 : 58));
     const height = Number(row.height || (role === 'ayah' ? 173 : 160));
-    const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+    const special_condition = (row.special_condition || (role === 'ibu' ? 'menyusui_eksklusif' : 'none')) as any;
+    const notes = row.notes ? String(row.notes) : '';
+    const ideal = calculateParentIdealNutrition({ role, weight, height, age, specialCondition: special_condition });
 
     const profile: ParentProfile = {
       id: Number(row.id),
@@ -68,6 +73,8 @@ export async function GET(request: Request) {
       target_fiber_min: Number(row.target_fiber_min || (role === 'ayah' ? 28 : 25)),
       target_uric_acid_max: Number(row.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5)),
       target_cholesterol_lab_max: Number(row.target_cholesterol_lab_max || 190),
+      special_condition,
+      notes,
     };
 
     return NextResponse.json(profile);
@@ -92,6 +99,8 @@ export async function PUT(request: Request) {
       target_fiber_min,
       target_uric_acid_max,
       target_cholesterol_lab_max,
+      special_condition = 'none',
+      notes = '',
     } = body;
 
     const db = await getDbClient();
@@ -102,7 +111,8 @@ export async function PUT(request: Request) {
           UPDATE parent_profiles
           SET name = ?, age = ?, weight = ?, height = ?, target_calories = ?,
               target_cholesterol_max = ?, target_purine_max = ?, target_fiber_min = ?,
-              target_uric_acid_max = ?, target_cholesterol_lab_max = ?
+              target_uric_acid_max = ?, target_cholesterol_lab_max = ?,
+              special_condition = ?, notes = ?
           WHERE role = ?
         `,
         args: [
@@ -116,6 +126,8 @@ export async function PUT(request: Request) {
           Number(target_fiber_min),
           Number(target_uric_acid_max),
           Number(target_cholesterol_lab_max),
+          special_condition,
+          notes,
           role,
         ],
       });

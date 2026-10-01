@@ -10,15 +10,18 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const role = (searchParams.get('role') || 'ayah') as ParentRole;
+    const forceAI = searchParams.get('force') === 'true' || searchParams.get('ai') === 'true';
 
     const defaultAge = role === 'ayah' ? 34 : 32;
     const defaultWeight = role === 'ayah' ? 74 : 58;
     const defaultHeight = role === 'ayah' ? 173 : 160;
+    const defaultCondition = role === 'ibu' ? 'menyusui_eksklusif' : 'none';
     const defaultIdeal = calculateParentIdealNutrition({
       role,
       weight: defaultWeight,
       height: defaultHeight,
       age: defaultAge,
+      specialCondition: defaultCondition,
     });
 
     const db = await getDbClient();
@@ -36,6 +39,8 @@ export async function GET(request: Request) {
       target_fiber_min: role === 'ayah' ? 28 : 25,
       target_uric_acid_max: role === 'ayah' ? 6.5 : 5.5,
       target_cholesterol_lab_max: 190,
+      special_condition: defaultCondition,
+      notes: role === 'ibu' ? 'Ibu Menyusui Eksklusif' : '',
     };
 
     let latestLab: ParentLabCheck | null = null;
@@ -53,7 +58,9 @@ export async function GET(request: Request) {
         const age = Number(row.age || defaultAge);
         const weight = Number(row.weight || defaultWeight);
         const height = Number(row.height || defaultHeight);
-        const ideal = calculateParentIdealNutrition({ role, weight, height, age });
+        const special_condition = (row.special_condition || defaultCondition) as any;
+        const notes = row.notes ? String(row.notes) : '';
+        const ideal = calculateParentIdealNutrition({ role, weight, height, age, specialCondition: special_condition });
 
         profile = {
           id: Number(row.id),
@@ -69,6 +76,8 @@ export async function GET(request: Request) {
           target_fiber_min: Number(row.target_fiber_min || (role === 'ayah' ? 28 : 25)),
           target_uric_acid_max: Number(row.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5)),
           target_cholesterol_lab_max: Number(row.target_cholesterol_lab_max || 190),
+          special_condition,
+          notes,
         };
       }
 
@@ -94,7 +103,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const assessment = await evaluateAITargetsFromLab(role, profile, latestLab);
+    const assessment = await evaluateAITargetsFromLab(role, profile, latestLab, forceAI);
     return NextResponse.json(assessment);
   } catch (error) {
     console.error('Error assessing AI targets for parent:', error);
