@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DataTransferModal from '@/components/DataTransferModal';
-import { Baby, ParentProfile, ParentRole } from '@/lib/types';
+import { Baby, ParentProfile, ParentRole, AITargetAssessment } from '@/lib/types';
 import { calculateAgeInMonths, formatAge } from '@/lib/nutrition-targets';
 import {
   Baby as BabyIcon,
@@ -17,6 +17,12 @@ import {
   ShieldAlert,
   Database,
   Users,
+  Brain,
+  Sparkles,
+  Zap,
+  RefreshCw,
+  Droplets,
+  Apple,
 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -44,6 +50,8 @@ export default function ProfilePage() {
   const [parentCholesterolLabMax, setParentCholesterolLabMax] = useState<number>(190);
   const [parentSaving, setParentSaving] = useState(false);
   const [parentMsg, setParentMsg] = useState('');
+  const [aiAssessment, setAiAssessment] = useState<AITargetAssessment | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Fetch Baby
   useEffect(() => {
@@ -62,24 +70,53 @@ export default function ProfilePage() {
   // Fetch Parent when tab changes or role changes
   const fetchParentProfile = async (role: ParentRole) => {
     try {
-      const res = await fetch(`/api/parents/profile?role=${role}`);
-      const data: ParentProfile = await res.json();
-      if (data) {
-        setParentProfile(data);
-        setParentName(data.name || (role === 'ayah' ? 'Ayah' : 'Ibu'));
-        setParentAge(data.age || (role === 'ayah' ? 34 : 32));
-        setParentWeight(data.weight || (role === 'ayah' ? 74 : 58));
-        setParentHeight(data.height || (role === 'ayah' ? 173 : 160));
-        setParentCalories(data.target_calories || (role === 'ayah' ? 2000 : 1700));
-        setParentCholesterolMax(data.target_cholesterol_max || 200);
-        setParentPurineMax(data.target_purine_max || (role === 'ayah' ? 400 : 350));
-        setParentFiberMin(data.target_fiber_min || (role === 'ayah' ? 28 : 25));
-        setParentUricAcidLabMax(data.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5));
-        setParentCholesterolLabMax(data.target_cholesterol_lab_max || 190);
+      setAiLoading(true);
+      const [profileRes, aiRes] = await Promise.all([
+        fetch(`/api/parents/profile?role=${role}`),
+        fetch(`/api/parents/ai-targets?role=${role}`),
+      ]);
+
+      const profileData: ParentProfile = await profileRes.json();
+      const aiData: AITargetAssessment = await aiRes.json();
+
+      setAiAssessment(aiData);
+
+      if (profileData) {
+        setParentProfile(profileData);
+        setParentName(profileData.name || (role === 'ayah' ? 'Ayah' : 'Ibu'));
+        setParentAge(profileData.age || (role === 'ayah' ? 34 : 32));
+        setParentWeight(profileData.weight || (role === 'ayah' ? 74 : 58));
+        setParentHeight(profileData.height || (role === 'ayah' ? 173 : 160));
+        setParentCalories(profileData.target_calories || (role === 'ayah' ? 2000 : 1700));
+        
+        // If AI assessment has lab data, prioritize the AI adjusted targets
+        if (aiData && aiData.hasLabData) {
+          setParentCholesterolMax(aiData.adjusted_cholesterol_max);
+          setParentPurineMax(aiData.adjusted_purine_max);
+          setParentFiberMin(aiData.adjusted_fiber_min);
+        } else {
+          setParentCholesterolMax(profileData.target_cholesterol_max || 200);
+          setParentPurineMax(profileData.target_purine_max || (role === 'ayah' ? 400 : 350));
+          setParentFiberMin(profileData.target_fiber_min || (role === 'ayah' ? 28 : 25));
+        }
+
+        setParentUricAcidLabMax(profileData.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5));
+        setParentCholesterolLabMax(profileData.target_cholesterol_lab_max || 190);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading parent profile or AI targets:', err);
+    } finally {
+      setAiLoading(false);
     }
+  };
+
+  const applyAITargets = () => {
+    if (!aiAssessment) return;
+    setParentPurineMax(aiAssessment.adjusted_purine_max);
+    setParentCholesterolMax(aiAssessment.adjusted_cholesterol_max);
+    setParentFiberMin(aiAssessment.adjusted_fiber_min);
+    setParentMsg('Target harian berhasil disesuaikan dengan kalkulasi AI!');
+    setTimeout(() => setParentMsg(''), 3000);
   };
 
   useEffect(() => {
@@ -438,12 +475,89 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* AI Auto-Target Recommendation Banner */}
+              {aiAssessment && aiAssessment.hasLabData ? (
+                <div className="p-3.5 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-blue-50/80 border border-indigo-200/80 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Brain size={16} className="text-indigo-600" />
+                      <span className="text-xs font-bold text-indigo-950 flex items-center gap-1">
+                        <Sparkles size={12} className="text-amber-500" />
+                        Target Otomatis AI (Dari Cek Darah Terakhir: {aiAssessment.labDate})
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                        aiAssessment.phase === 'pemulihan_ketat'
+                          ? 'bg-red-500 text-white'
+                          : aiAssessment.phase === 'pencegahan_waspada'
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {aiAssessment.phase === 'pemulihan_ketat'
+                        ? '🚨 Restriksi Ketat'
+                        : aiAssessment.phase === 'pencegahan_waspada'
+                        ? '⚠️ Waspada'
+                        : '✅ Normal'}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-indigo-900 leading-relaxed">
+                    Berdasarkan Lab Asam Urat (<strong>{aiAssessment.uricAcid} mg/dL</strong>) & Kolesterol (<strong>{aiAssessment.totalCholesterol} mg/dL</strong>), AI merekomendasikan batas target otomatis:
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                      <span className="text-[var(--text-muted)] block text-[9px]">Max Purin:</span>
+                      <strong className="text-amber-700 text-xs">{aiAssessment.adjusted_purine_max} mg</strong>
+                    </div>
+                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                      <span className="text-[var(--text-muted)] block text-[9px]">Max Kolesterol:</span>
+                      <strong className="text-rose-700 text-xs">{aiAssessment.adjusted_cholesterol_max} mg</strong>
+                    </div>
+                    <div className="p-1.5 bg-white/90 rounded-xl border border-indigo-100 font-medium">
+                      <span className="text-[var(--text-muted)] block text-[9px]">Min Serat:</span>
+                      <strong className="text-emerald-700 text-xs">{aiAssessment.adjusted_fiber_min} g</strong>
+                    </div>
+                  </div>
+
+                  {(parentPurineMax !== aiAssessment.adjusted_purine_max ||
+                    parentCholesterolMax !== aiAssessment.adjusted_cholesterol_max ||
+                    parentFiberMin !== aiAssessment.adjusted_fiber_min) && (
+                    <button
+                      type="button"
+                      onClick={applyAITargets}
+                      className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Zap size={13} className="text-amber-300" />
+                      <span>⚡ Terapkan Rekomendasi Target AI ke Form</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-2xl flex items-start gap-2 text-[11px] text-amber-900">
+                  <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p>
+                    Belum ada riwayat hasil cek darah untuk {activeTab === 'ayah' ? 'Ayah' : 'Ibu'}. Target di bawah menggunakan batas standar. Begitu hasil cek lab dimasukkan di menu Orang Tua, AI akan otomatis menghitung dan menyesuaikan batas purin serta kolesterol di sini.
+                  </p>
+                </div>
+              )}
+
               {/* Daily Nutrition Intake Targets */}
               <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                  <Flame size={14} className="text-amber-600" />
-                  <span>Target Asupan Makanan Harian</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                    <Flame size={14} className="text-amber-600" />
+                    <span>Target Asupan Makanan Harian</span>
+                  </h3>
+                  {aiAssessment?.hasLabData && (
+                    <span className="text-[10px] font-bold text-indigo-600 flex items-center gap-1">
+                      <Sparkles size={11} className="text-amber-500" />
+                      Tersinkron AI
+                    </span>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -468,6 +582,9 @@ export default function ProfilePage() {
                       onChange={(e) => setParentFiberMin(Number(e.target.value))}
                       className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
                     />
+                    <span className="text-[10px] text-emerald-700 font-medium">
+                      {aiAssessment?.hasLabData ? `Rekomendasi AI: ≥ ${aiAssessment.adjusted_fiber_min} g` : 'Standar: ≥ 25 g'}
+                    </span>
                   </div>
 
                   <div>
@@ -480,7 +597,9 @@ export default function ProfilePage() {
                       onChange={(e) => setParentCholesterolMax(Number(e.target.value))}
                       className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
                     />
-                    <span className="text-[10px] text-[var(--text-muted)]">Aman: &lt; 200 mg</span>
+                    <span className="text-[10px] text-rose-700 font-medium">
+                      {aiAssessment?.hasLabData ? `Batas Aman AI: ≤ ${aiAssessment.adjusted_cholesterol_max} mg` : 'Aman: < 200 mg'}
+                    </span>
                   </div>
 
                   <div>
@@ -493,7 +612,9 @@ export default function ProfilePage() {
                       onChange={(e) => setParentPurineMax(Number(e.target.value))}
                       className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)]"
                     />
-                    <span className="text-[10px] text-[var(--text-muted)]">Aman: &lt; 400 mg</span>
+                    <span className="text-[10px] text-amber-700 font-medium">
+                      {aiAssessment?.hasLabData ? `Batas Aman AI: ≤ ${aiAssessment.adjusted_purine_max} mg` : 'Aman: < 400 mg'}
+                    </span>
                   </div>
                 </div>
               </div>

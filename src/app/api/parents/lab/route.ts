@@ -87,6 +87,35 @@ export async function POST(request: Request) {
         ],
       });
       savedId = Number(res.lastInsertRowid);
+
+      // Automatically compute AI-adjusted targets based on new lab test
+      const maxUricNormal = parent_role === 'ayah' ? 7.0 : 6.0;
+      let newPurineMax = parent_role === 'ayah' ? 400 : 350;
+      if (Number(uric_acid) >= maxUricNormal + 0.8) {
+        newPurineMax = 180;
+      } else if (Number(uric_acid) > maxUricNormal) {
+        newPurineMax = 280;
+      }
+
+      let newCholesterolMax = 200;
+      let newFiberMin = parent_role === 'ayah' ? 28 : 25;
+      if (Number(total_cholesterol) >= 240 || (ldl_cholesterol && Number(ldl_cholesterol) >= 160)) {
+        newCholesterolMax = 120;
+        newFiberMin = 32;
+      } else if (Number(total_cholesterol) >= 200 || (ldl_cholesterol && Number(ldl_cholesterol) >= 130)) {
+        newCholesterolMax = 160;
+        newFiberMin = 28;
+      }
+
+      // Update parent_profiles target columns in database
+      await db.execute({
+        sql: `
+          UPDATE parent_profiles
+          SET target_purine_max = ?, target_cholesterol_max = ?, target_fiber_min = ?
+          WHERE role = ?
+        `,
+        args: [newPurineMax, newCholesterolMax, newFiberMin, parent_role],
+      });
     }
 
     return NextResponse.json({
@@ -96,6 +125,7 @@ export async function POST(request: Request) {
       uric_acid: Number(uric_acid),
       total_cholesterol: Number(total_cholesterol),
       notes,
+      autoUpdatedTargets: true,
     });
   } catch (error) {
     console.error('Error saving parent lab check:', error);
