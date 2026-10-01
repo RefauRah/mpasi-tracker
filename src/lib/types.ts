@@ -222,4 +222,24 @@ export interface ParentRecommendation {
   estimated_calories: number;
 }
 
+export interface AITargetAssessment {
+  role: ParentRole;
+  labDate: string | null;
+  hasLabData: boolean;
+  uricAcid: number | null;
+  uricAcidStatus: 'normal' | 'waspada' | 'tinggi';
+  totalCholesterol: number | null;
+  cholesterolStatus: 'normal' | 'waspada' | 'tinggi';
+  adjusted_purine_max: number;
+  adjusted_cholesterol_max: number;
+  adjusted_fiber_min: number;
+  adjusted_water_glasses: number;
+  phase: 'pemulihan_ketat' | 'pencegahan_waspada' | 'pemeliharaan_normal';
+  title: string;
+  summary: string;
+  directives: string[];
+  recommendations: string[];
+}
+
+
 

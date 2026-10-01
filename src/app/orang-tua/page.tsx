@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import ParentMealInput from '@/components/ParentMealInput';
 import ParentNutritionProgress from '@/components/ParentNutritionProgress';
+import ParentAITargetsBanner from '@/components/ParentAITargetsBanner';
 import ParentFoodCard from '@/components/ParentFoodCard';
 import ParentLabSection from '@/components/ParentLabSection';
 import ParentHealthChart from '@/components/ParentHealthChart';
@@ -14,6 +15,7 @@ import {
   ParentRole,
   ParentRecommendation,
   ParentLabCheck,
+  AITargetAssessment,
 } from '@/lib/types';
 import {
   Users,
@@ -34,6 +36,7 @@ export default function OrangTuaDashboard() {
   const [todayMeals, setTodayMeals] = useState<ParentMeal[]>([]);
   const [labData, setLabData] = useState<ParentLabCheck[]>([]);
   const [intakeStats, setIntakeStats] = useState<any[]>([]);
+  const [aiAssessment, setAiAssessment] = useState<AITargetAssessment | null>(null);
   const [recommendations, setRecommendations] = useState<ParentRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,22 +63,25 @@ export default function OrangTuaDashboard() {
           ? `/api/parents/stats?role=${role}&month=${selectedMonth}`
           : `/api/parents/stats?role=${role}&days=${days}`;
 
-      const [profileRes, mealsRes, labRes, statsRes] = await Promise.all([
+      const [profileRes, mealsRes, labRes, statsRes, aiTargetsRes] = await Promise.all([
         fetch(`/api/parents/profile?role=${role}`),
         fetch(`/api/parents/meals?role=${role}&date=${todayStr}`),
         fetch(`/api/parents/lab?role=${role}`),
         fetch(statsUrl),
+        fetch(`/api/parents/ai-targets?role=${role}`),
       ]);
 
       const profileData = await profileRes.json();
       const mealsData = await mealsRes.json();
       const labDataRes = await labRes.json();
       const statsData = await statsRes.json();
+      const aiTargetsData = await aiTargetsRes.json();
 
       setProfile(profileData);
       setTodayMeals(Array.isArray(mealsData) ? mealsData : []);
       setLabData(Array.isArray(labDataRes) ? labDataRes : []);
       setIntakeStats(Array.isArray(statsData) ? statsData : []);
+      setAiAssessment(aiTargetsData && !aiTargetsData.error ? aiTargetsData : null);
     } catch (err) {
       console.error('Error fetching parent data:', err);
     } finally {
@@ -230,12 +236,20 @@ export default function OrangTuaDashboard() {
         </div>
       </div>
 
+      {/* AI Dynamic Target Assessment Banner (Automatic from Blood Lab Results) */}
+      <ParentAITargetsBanner assessment={aiAssessment} loading={loading} />
+
       {/* Input Meal Form */}
       <ParentMealInput role={role} onMealAdded={fetchData} />
 
-      {/* Daily Progress Bars & Meters */}
+      {/* Daily Progress Bars & Meters with AI Target Integration */}
       {profile && (
-        <ParentNutritionProgress summary={summary} profile={profile} role={role} />
+        <ParentNutritionProgress
+          summary={summary}
+          profile={profile}
+          role={role}
+          aiAssessment={aiAssessment}
+        />
       )}
 
       {/* Today's Meals Section */}

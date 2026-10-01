@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ParentProfile, ParentRole } from '@/lib/types';
+import { ParentProfile, ParentRole, AITargetAssessment } from '@/lib/types';
 import {
   Flame,
   Activity,
@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   Leaf,
+  Brain,
 } from 'lucide-react';
 
 interface ParentNutritionSummary {
@@ -29,12 +30,14 @@ interface ParentNutritionProgressProps {
   summary: ParentNutritionSummary;
   profile: ParentProfile;
   role: ParentRole;
+  aiAssessment?: AITargetAssessment | null;
 }
 
 export default function ParentNutritionProgress({
   summary,
   profile,
   role,
+  aiAssessment,
 }: ParentNutritionProgressProps) {
   const [waterGlasses, setWaterGlasses] = useState(0);
   const [loadingWater, setLoadingWater] = useState(false);
@@ -74,11 +77,12 @@ export default function ParentNutritionProgress({
     }
   };
 
-  // Calculations
-  const maxCholesterol = profile.target_cholesterol_max || 200;
-  const maxPurine = profile.target_purine_max || 400;
-  const targetFiber = profile.target_fiber_min || 25;
-  const targetCalories = profile.target_calories || 2000;
+  // Calculations with AI dynamic targets
+  const maxCholesterol = aiAssessment?.adjusted_cholesterol_max ?? (profile.target_cholesterol_max || 200);
+  const maxPurine = aiAssessment?.adjusted_purine_max ?? (profile.target_purine_max || 400);
+  const targetFiber = aiAssessment?.adjusted_fiber_min ?? (profile.target_fiber_min || 25);
+  const targetWater = aiAssessment?.adjusted_water_glasses ?? 8;
+  const targetCalories = profile.target_calories || (role === 'ayah' ? 2000 : 1700);
 
   const cholPercent = Math.min(100, Math.round((summary.cholesterol / maxCholesterol) * 100));
   const purinePercent = Math.min(100, Math.round((summary.purine / maxPurine) * 100));
@@ -87,6 +91,8 @@ export default function ParentNutritionProgress({
 
   const isCholesterolSafe = summary.cholesterol <= maxCholesterol;
   const isPurineSafe = summary.purine <= maxPurine;
+
+  const hasAIAdjustment = aiAssessment && aiAssessment.hasLabData;
 
   return (
     <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] p-5 border border-[var(--border-color)] shadow-[var(--shadow-md)] space-y-4">
@@ -117,11 +123,18 @@ export default function ParentNutritionProgress({
               <Heart size={15} className={isCholesterolSafe ? 'text-amber-600' : 'text-red-600'} />
               Kolesterol
             </span>
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-              isCholesterolSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {isCholesterolSafe ? 'Aman' : 'Melebihi'}
-            </span>
+            <div className="flex items-center gap-1">
+              {hasAIAdjustment && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  AI Lab
+                </span>
+              )}
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                isCholesterolSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {isCholesterolSafe ? 'Aman' : 'Melebihi'}
+              </span>
+            </div>
           </div>
 
           <div className="mt-2 flex items-baseline gap-1">
@@ -148,11 +161,18 @@ export default function ParentNutritionProgress({
               <Activity size={15} className={isPurineSafe ? 'text-blue-600' : 'text-red-600'} />
               Purin (Asam Urat)
             </span>
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-              isPurineSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {isPurineSafe ? 'Aman' : 'Tinggi'}
-            </span>
+            <div className="flex items-center gap-1">
+              {hasAIAdjustment && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                  AI Lab
+                </span>
+              )}
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                isPurineSafe ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {isPurineSafe ? 'Aman' : 'Tinggi'}
+              </span>
+            </div>
           </div>
 
           <div className="mt-2 flex items-baseline gap-1">
@@ -238,11 +258,11 @@ export default function ParentNutritionProgress({
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-sky-950">Hidrasi Air Putih</span>
               <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-sky-200 text-sky-900">
-                {waterGlasses * 250} ml
+                {waterGlasses * 250} ml / {targetWater * 250} ml
               </span>
             </div>
             <p className="text-[10px] text-sky-800">
-              Minum 8-10 gelas/hari meluruhkan kristal asam urat
+              Target {targetWater} gelas/hari untuk meluruhkan asam urat
             </p>
           </div>
         </div>
