@@ -1,24 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TBMedicationLog } from '@/lib/types';
-import { X, CheckCircle2, Clock, Calendar, Pill, ShieldAlert } from 'lucide-react';
+import { Pill, CheckCircle2, ShieldAlert, Plus, ChevronDown, ChevronUp, Clock, Calendar, Sparkles } from 'lucide-react';
 
-interface TBInputModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface TBManualInputFormProps {
   onSaved: () => void;
-  initialData?: TBMedicationLog | null;
-  nextSuggestedDay?: number;
+  nextSuggestedDay: number;
+  isOpenDefault?: boolean;
 }
 
-export default function TBInputModal({
-  isOpen,
-  onClose,
+export default function TBManualInputForm({
   onSaved,
-  initialData,
   nextSuggestedDay = 1,
-}: TBInputModalProps) {
+  isOpenDefault = false,
+}: TBManualInputFormProps) {
+  const [isOpen, setIsOpen] = useState(isOpenDefault);
   const [dayNumber, setDayNumber] = useState<number>(nextSuggestedDay);
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState<string>(() => new Date().toTimeString().slice(0, 5));
@@ -26,48 +22,29 @@ export default function TBInputModal({
   const [dosage, setDosage] = useState<string>('2 Tablet');
   const [method, setMethod] = useState<string>('Spuit + air putih');
   const [status, setStatus] = useState<string>('Selesai');
-  const [notes, setNotes] = useState<string>('~90%');
+  const [notes, setNotes] = useState<string>('~100%');
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    if (initialData) {
-      setDayNumber(initialData.day_number);
-      setDate(initialData.date);
-      setTime(initialData.time || '06:00');
-      setMedicineName(initialData.medicine_name);
-      setDosage(initialData.dosage);
-      setMethod(initialData.method);
-      setStatus(initialData.status);
-      setNotes(initialData.notes || '');
-    } else {
-      setDayNumber(nextSuggestedDay);
-      setDate(new Date().toISOString().split('T')[0]);
-      setTime(new Date().toTimeString().slice(0, 5));
-      setMedicineName('OAT KDT Anak');
-      setDosage('2 Tablet');
-      setMethod('Spuit + air putih');
-      setStatus('Selesai');
-      setNotes('~90%');
-    }
-    setError('');
-  }, [initialData, nextSuggestedDay, isOpen]);
-
-  if (!isOpen) return null;
+    setDayNumber(nextSuggestedDay);
+  }, [nextSuggestedDay]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dayNumber || !date || !medicineName.trim() || !dosage.trim()) {
-      setError('Mohon lengkapi data wajib (Hari Ke, Tanggal, Nama Obat, Dosis).');
+      setMessage({
+        text: 'Mohon lengkapi data wajib (Hari Ke, Tanggal, Nama Obat, Dosis).',
+        type: 'error',
+      });
       return;
     }
 
     setSubmitting(true);
-    setError('');
+    setMessage(null);
 
     try {
       const payload = {
-        id: initialData?.id,
         day_number: Number(dayNumber),
         date,
         time,
@@ -79,7 +56,7 @@ export default function TBInputModal({
       };
 
       const res = await fetch('/api/tb-medications', {
-        method: initialData ? 'PUT' : 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -89,10 +66,23 @@ export default function TBInputModal({
         throw new Error(data.error || 'Gagal menyimpan catatan obat TB');
       }
 
+      setMessage({
+        text: `Catatan Hari Ke-${dayNumber} berhasil disimpan!`,
+        type: 'success',
+      });
+
+      // Auto update next suggested day
+      setDayNumber((prev) => Number(prev) + 1);
       onSaved();
-      onClose();
+
+      setTimeout(() => {
+        setMessage(null);
+      }, 3500);
     } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat menyimpan');
+      setMessage({
+        text: err.message || 'Terjadi kesalahan saat menyimpan catatan.',
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -110,37 +100,54 @@ export default function TBInputModal({
   const statusPresets = ['Selesai', 'Sebagian', 'Terlewat', 'Muntah'];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[var(--bg-card)] w-full max-w-lg rounded-3xl border border-[var(--border-color)] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
-        {/* Modal Header */}
-        <div className="p-5 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-r from-amber-500/10 to-orange-500/10">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-amber-500 text-white rounded-2xl shadow-sm">
-              <Pill size={22} />
-            </div>
-            <div>
-              <h2 className="text-base font-extrabold text-[var(--text-main)]">
-                {initialData ? 'Edit Catatan Minum Obat TB' : 'Catat Minum Obat TB'}
-              </h2>
-              <p className="text-xs text-[var(--text-muted)]">
-                {initialData ? `Perbarui data Hari Ke-${initialData.day_number}` : 'Input harian jurnal terapi OAT'}
-              </p>
-            </div>
+    <div className="bg-[var(--bg-card)] rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-md)] overflow-hidden transition-all">
+      {/* Header / Toggle Accordion */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent flex items-center justify-between cursor-pointer select-none hover:bg-amber-500/15 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-amber-500 text-white rounded-xl shadow-sm">
+            <Pill size={20} />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-full hover:bg-[var(--bg-secondary)] transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div>
+            <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-1.5">
+              <span>Form Input Manual Obat TB</span>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                Hari Ke-{dayNumber}
+              </span>
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              {isOpen ? 'Isi detail minum obat di bawah ini' : 'Klik untuk membuka formulir pencatatan harian OAT'}
+            </p>
+          </div>
         </div>
 
-        {/* Modal Body / Form */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
-          {error && (
-            <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl flex items-center gap-2 border border-red-200">
-              <ShieldAlert size={16} className="shrink-0" />
-              <span>{error}</span>
+        <button
+          type="button"
+          className="p-1.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-main)] border border-[var(--border-color)]"
+        >
+          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+      </div>
+
+      {/* Form Content */}
+      {isOpen && (
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 border-t border-[var(--border-color)] bg-[var(--bg-card)] animate-fade-in">
+          {message && (
+            <div
+              className={`p-3 text-xs rounded-xl flex items-center gap-2 border ${
+                message.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-red-50 text-red-800 border-red-200'
+              }`}
+            >
+              {message.type === 'success' ? (
+                <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+              ) : (
+                <ShieldAlert size={16} className="shrink-0 text-red-600" />
+              )}
+              <span>{message.text}</span>
             </div>
           )}
 
@@ -165,15 +172,13 @@ export default function TBInputModal({
               <label className="block text-xs font-bold text-[var(--text-main)] mb-1">
                 Tanggal: <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-semibold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
-                />
-              </div>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-semibold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
+              />
             </div>
           </div>
 
@@ -310,7 +315,7 @@ export default function TBInputModal({
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. ~90% atau diminum lancar"
+              placeholder="e.g. ~100% atau diminum lancar"
               className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-semibold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
             />
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -320,7 +325,7 @@ export default function TBInputModal({
                   type="button"
                   onClick={() => setNotes(pct)}
                   className={`text-[10px] px-2 py-0.5 rounded-lg border transition-colors ${
-                    notes.includes(pct)
+                    notes === pct
                       ? 'bg-amber-500 text-white font-bold border-amber-600'
                       : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border-[var(--border-color)] hover:border-amber-400'
                   }`}
@@ -331,26 +336,19 @@ export default function TBInputModal({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pt-3 border-t border-[var(--border-color)] flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 px-4 bg-[var(--bg-secondary)] hover:bg-gray-200 text-[var(--text-main)] font-bold text-xs rounded-xl transition-colors"
-            >
-              Batal
-            </button>
+          {/* Action Button */}
+          <div className="pt-2">
             <button
               type="submit"
               disabled={submitting}
-              className="flex-2 py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <CheckCircle2 size={16} />
-              <span>{submitting ? 'Menyimpan...' : initialData ? 'Perbarui Catatan' : 'Simpan Catatan TB'}</span>
+              <span>{submitting ? 'Menyimpan Catatan...' : `Simpan Catatan Hari Ke-${dayNumber}`}</span>
             </button>
           </div>
         </form>
-      </div>
+      )}
     </div>
   );
 }

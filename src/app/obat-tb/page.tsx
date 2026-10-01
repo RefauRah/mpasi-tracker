@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { TBMedicationLog, TBMedicationStats } from '@/lib/types';
 import TBMedicationChart from '@/components/TBMedicationChart';
+import TBManualInputForm from '@/components/TBManualInputForm';
 import TBInputModal from '@/components/TBInputModal';
 import TBImportModal from '@/components/TBImportModal';
 import Pagination from '@/components/Pagination';
@@ -305,16 +306,25 @@ export default function TBTrackerPage() {
         </div>
       </div>
 
+      {/* In-Page Manual Input Form */}
+      <TBManualInputForm
+        onSaved={fetchData}
+        nextSuggestedDay={nextSuggestedDay}
+        isOpenDefault={true}
+      />
+
       {/* Action Toolbar */}
       <div className="bg-[var(--bg-card)] p-4 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <button
-            onClick={handleOpenNewInput}
-            className="flex-1 sm:flex-none py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
-          >
-            <Plus size={16} />
-            <span>+ Catat Manual (Hari Ke-{nextSuggestedDay})</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenNewInput}
+              className="py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+            >
+              <Plus size={16} />
+              <span>+ Form Pop-up (Hari Ke-{nextSuggestedDay})</span>
+            </button>
+          </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
