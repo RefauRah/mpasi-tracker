@@ -6,6 +6,7 @@ import ParentMealInput from '@/components/ParentMealInput';
 import ParentNutritionProgress from '@/components/ParentNutritionProgress';
 import ParentAITargetsBanner from '@/components/ParentAITargetsBanner';
 import ParentFoodCard from '@/components/ParentFoodCard';
+import ParentMealHistory from '@/components/ParentMealHistory';
 import ParentLabSection from '@/components/ParentLabSection';
 import ParentHealthChart from '@/components/ParentHealthChart';
 import ParentRecommendationCard from '@/components/ParentRecommendationCard';
@@ -35,6 +36,8 @@ import {
   ArrowUpRight,
   TrendingDown,
   TrendingUp,
+  History,
+  Utensils,
 } from 'lucide-react';
 import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
@@ -49,6 +52,7 @@ export default function OrangTuaDashboard() {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAiSyncing, setIsAiSyncing] = useState(false);
+  const [mealViewMode, setMealViewMode] = useState<'today' | 'history'>('today');
 
   // Pagination for meals
   const [mealsPage, setMealsPage] = useState(1);
@@ -404,42 +408,82 @@ export default function OrangTuaDashboard() {
         />
       )}
 
-      {/* Today's Meals Section */}
+      {/* Meals & History Section */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[var(--text-main)] flex items-center gap-1.5">
-            <Heart size={16} className="text-rose-500" />
-            <span>Makanan Terdaftar Hari Ini ({todayMeals.length})</span>
-          </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-secondary)] rounded-2xl self-start">
+            <button
+              type="button"
+              onClick={() => setMealViewMode('today')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                mealViewMode === 'today'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <Heart size={14} />
+              <span>Hari Ini ({todayMeals.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMealViewMode('history')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                mealViewMode === 'history'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              <History size={14} />
+              <span>Riwayat Makanan</span>
+            </button>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="space-y-2">
-            <LoadingSpinner text={`Memuat data makanan ${role === 'ayah' ? 'Ayah' : 'Ibu'}...`} size="sm" />
-            <SkeletonList count={2} />
-          </div>
-        ) : todayMeals.length === 0 ? (
-          <div className="p-6 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
-            Belum ada makanan yang dicatat untuk {profile?.name || (role === 'ayah' ? 'Ayah' : 'Ibu')} hari ini.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {paginatedMeals.map((meal) => (
-              <ParentFoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
-            ))}
+        {mealViewMode === 'today' ? (
+          <div>
+            {loading ? (
+              <div className="space-y-2">
+                <LoadingSpinner text={`Memuat data makanan ${role === 'ayah' ? 'Ayah' : 'Ibu'} hari ini...`} size="sm" />
+                <SkeletonList count={2} />
+              </div>
+            ) : todayMeals.length === 0 ? (
+              <div className="p-6 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)] space-y-2">
+                <p>Belum ada makanan yang dicatat untuk {profile?.name || (role === 'ayah' ? 'Ayah' : 'Ibu')} hari ini.</p>
+                <button
+                  type="button"
+                  onClick={() => setMealViewMode('history')}
+                  className="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1 text-[11px]"
+                >
+                  <History size={12} />
+                  <span>Lihat Riwayat Makanan Lampau</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paginatedMeals.map((meal) => (
+                  <ParentFoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
+                ))}
 
-            {todayMeals.length > mealsPageSize && (
-              <Pagination
-                currentPage={mealsPage}
-                totalPages={mealsTotalPages}
-                totalItems={todayMeals.length}
-                pageSize={mealsPageSize}
-                onPageChange={setMealsPage}
-                onPageSizeChange={setMealsPageSize}
-                pageSizeOptions={[5, 10, 20]}
-              />
+                {todayMeals.length > mealsPageSize && (
+                  <Pagination
+                    currentPage={mealsPage}
+                    totalPages={mealsTotalPages}
+                    totalItems={todayMeals.length}
+                    pageSize={mealsPageSize}
+                    onPageChange={setMealsPage}
+                    onPageSizeChange={setMealsPageSize}
+                    pageSizeOptions={[5, 10, 20]}
+                  />
+                )}
+              </div>
             )}
           </div>
+        ) : (
+          <ParentMealHistory
+            role={role}
+            onMealDeleted={fetchData}
+            title={`Riwayat Makanan Lengkap: ${profile?.name || (role === 'ayah' ? 'Ayah' : 'Ibu')}`}
+          />
         )}
       </div>
 

@@ -5,11 +5,13 @@ import MPASISubNav from '@/components/MPASISubNav';
 import FoodCard from '@/components/FoodCard';
 import MedicationSection from '@/components/MedicationSection';
 import Pagination from '@/components/Pagination';
-import { Meal, NutritionSummary } from '@/lib/types';
-import { Calendar as CalendarIcon, History } from 'lucide-react';
+import ParentMealHistory from '@/components/ParentMealHistory';
+import { Meal, NutritionSummary, ParentRole } from '@/lib/types';
+import { Calendar as CalendarIcon, History, Baby, User } from 'lucide-react';
 import LoadingSpinner, { SkeletonList } from '@/components/LoadingSpinner';
 
 export default function HistoryPage() {
+  const [activeTab, setActiveTab] = useState<'anak' | ParentRole>('anak');
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +21,7 @@ export default function HistoryPage() {
   const [pageSize, setPageSize] = useState(5);
 
   const fetchHistory = useCallback(async () => {
+    if (activeTab !== 'anak') return;
     setLoading(true);
     try {
       const res = await fetch(`/api/meals?date=${selectedDate}`);
@@ -29,7 +32,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, activeTab]);
 
   useEffect(() => {
     fetchHistory();
@@ -75,91 +78,136 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* MPASI Module Navigation */}
-      <MPASISubNav />
-
-      {/* Header */}
-      <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
-            <History size={20} />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-[var(--text-main)]">Riwayat MPASI & Kesehatan</h1>
-            <p className="text-xs text-[var(--text-muted)]">Lihat kembali catatan makanan & obat per tanggal</p>
-          </div>
-        </div>
-
-        {/* Date Selector */}
-        <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
-          <CalendarIcon size={18} className="text-[var(--text-muted)] shrink-0" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
-          />
-        </div>
+      {/* Role Switcher Tabs */}
+      <div className="flex bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border-color)]">
+        <button
+          onClick={() => setActiveTab('anak')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'anak'
+              ? 'bg-[var(--bg-card)] text-[var(--accent-terracotta)] shadow-[var(--shadow-sm)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+          }`}
+        >
+          <Baby size={16} />
+          <span>MPASI Anak</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('ayah')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'ayah'
+              ? 'bg-[var(--bg-card)] text-blue-500 shadow-[var(--shadow-sm)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+          }`}
+        >
+          <User size={16} />
+          <span>Riwayat Ayah</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('ibu')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'ibu'
+              ? 'bg-[var(--bg-card)] text-pink-500 shadow-[var(--shadow-sm)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+          }`}
+        >
+          <User size={16} />
+          <span>Riwayat Ibu</span>
+        </button>
       </div>
 
-      {/* Day Summary Card */}
-      <div className="bg-gradient-to-r from-[var(--bg-secondary)] to-[var(--bg-primary)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-        <div className="flex justify-between items-center text-xs text-[var(--text-muted)] font-medium">
-          <span>Ringkasan {formattedDateTitle}:</span>
-          <span className="font-bold text-[var(--accent-terracotta)]">{daySummary.calories} kkal</span>
-        </div>
+      {activeTab === 'anak' ? (
+        <div className="space-y-5">
+          {/* MPASI Module Navigation */}
+          <MPASISubNav />
 
-        <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
-          <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
-            <span className="text-[10px] text-[var(--text-muted)] block">Protein</span>
-            <span className="font-bold text-[var(--text-main)]">{daySummary.protein}g</span>
-          </div>
-          <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
-            <span className="text-[10px] text-[var(--text-muted)] block">Karbo</span>
-            <span className="font-bold text-[var(--text-main)]">{daySummary.carbs}g</span>
-          </div>
-          <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
-            <span className="text-[10px] text-[var(--text-muted)] block">Lemak</span>
-            <span className="font-bold text-[var(--text-main)]">{daySummary.fat}g</span>
-          </div>
-        </div>
-      </div>
+          {/* Header */}
+          <div className="bg-[var(--bg-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-[var(--accent-gold-light)] rounded-xl text-[var(--accent-gold)]">
+                <History size={20} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-[var(--text-main)]">Riwayat MPASI & Kesehatan</h1>
+                <p className="text-xs text-[var(--text-muted)]">Lihat kembali catatan makanan & obat per tanggal</p>
+              </div>
+            </div>
 
-      {/* Meals List */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-bold text-[var(--text-main)]">Daftar Makanan ({meals.length})</h3>
-        {loading ? (
-          <div className="space-y-3">
-            <LoadingSpinner text="Memuat riwayat makanan..." size="sm" />
-            <SkeletonList count={3} />
-          </div>
-        ) : meals.length === 0 ? (
-          <div className="p-8 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
-            Tidak ada riwayat makanan yang tercatat pada tanggal ini.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {paginatedMeals.map((meal) => (
-              <FoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
-            ))}
-
-            {meals.length > pageSize && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={meals.length}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={setPageSize}
-                pageSizeOptions={[5, 10, 20]}
+            {/* Date Selector */}
+            <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
+              <CalendarIcon size={18} className="text-[var(--text-muted)] shrink-0" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]"
               />
+            </div>
+          </div>
+
+          {/* Day Summary Card */}
+          <div className="bg-gradient-to-r from-[var(--bg-secondary)] to-[var(--bg-primary)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
+            <div className="flex justify-between items-center text-xs text-[var(--text-muted)] font-medium">
+              <span>Ringkasan {formattedDateTitle}:</span>
+              <span className="font-bold text-[var(--accent-terracotta)]">{daySummary.calories} kkal</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+              <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[10px] text-[var(--text-muted)] block">Protein</span>
+                <span className="font-bold text-[var(--text-main)]">{daySummary.protein}g</span>
+              </div>
+              <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[10px] text-[var(--text-muted)] block">Karbo</span>
+                <span className="font-bold text-[var(--text-main)]">{daySummary.carbs}g</span>
+              </div>
+              <div className="bg-[var(--bg-card)] p-2 rounded-xl border border-[var(--border-color)]">
+                <span className="text-[10px] text-[var(--text-muted)] block">Lemak</span>
+                <span className="font-bold text-[var(--text-main)]">{daySummary.fat}g</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Meals List */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-[var(--text-main)]">Daftar Makanan ({meals.length})</h3>
+            {loading ? (
+              <div className="space-y-3">
+                <LoadingSpinner text="Memuat riwayat makanan..." size="sm" />
+                <SkeletonList count={3} />
+              </div>
+            ) : meals.length === 0 ? (
+              <div className="p-8 bg-[var(--bg-card)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-color)] text-center text-xs text-[var(--text-muted)]">
+                Tidak ada riwayat makanan yang tercatat pada tanggal ini.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paginatedMeals.map((meal) => (
+                  <FoodCard key={meal.id} meal={meal} onDelete={handleDeleteMeal} />
+                ))}
+
+                {meals.length > pageSize && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={meals.length}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={setPageSize}
+                    pageSizeOptions={[5, 10, 20]}
+                  />
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Medications List */}
-      <MedicationSection date={selectedDate} />
+          {/* Medications List */}
+          <MedicationSection date={selectedDate} />
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <ParentMealHistory role={activeTab} />
+        </div>
+      )}
     </div>
   );
 }

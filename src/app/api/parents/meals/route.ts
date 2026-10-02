@@ -9,6 +9,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const role = (searchParams.get('role') || 'ayah') as ParentRole;
     const date = searchParams.get('date');
+    const month = searchParams.get('month');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const search = searchParams.get('search');
+    const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
 
     const db = await getDbClient();
     if (!db) {
@@ -16,20 +21,39 @@ export async function GET(request: Request) {
     }
 
     await initDb();
-    let res;
+    let query = 'SELECT * FROM parent_meals WHERE parent_role = ?';
+    const args: any[] = [role];
 
-    if (date) {
-      res = await db.execute({
-        sql: 'SELECT * FROM parent_meals WHERE parent_role = ? AND date = ? ORDER BY meal_time ASC, created_at ASC',
-        args: [role, date],
-      });
-    } else {
+    if (date && date !== 'all') {
+      query += ' AND date = ?';
+      args.push(date);
+    } else if (month) {
+      query += ' AND date LIKE ?';
+      args.push(`${month}%`);
+    } else if (startDate && endDate) {
+      query += ' AND date >= ? AND date <= ?';
+      args.push(startDate, endDate);
+    } else if (!date) {
+      // Default to today if no date or filter provided
       const today = new Date().toISOString().split('T')[0];
-      res = await db.execute({
-        sql: 'SELECT * FROM parent_meals WHERE parent_role = ? AND date = ? ORDER BY meal_time ASC, created_at ASC',
-        args: [role, today],
-      });
+      query += ' AND date = ?';
+      args.push(today);
     }
+
+    if (search && search.trim()) {
+      query += ' AND (input_text LIKE ? OR foods_json LIKE ?)';
+      const s = `%${search.trim()}%`;
+      args.push(s, s);
+    }
+
+    query += ' ORDER BY date DESC, meal_time DESC, id DESC';
+
+    if (limit) {
+      query += ' LIMIT ?';
+      args.push(limit);
+    }
+
+    const res = await db.execute({ sql: query, args });
 
     const meals: ParentMeal[] = res.rows.map((row) => ({
       id: Number(row.id),
