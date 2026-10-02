@@ -31,6 +31,7 @@ import {
   FileText,
 } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AIModelInfoCard from '@/components/AIModelInfoCard';
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'anak' | 'ayah' | 'ibu' | 'backup'>('anak');
@@ -977,6 +978,9 @@ export default function ProfilePage() {
           <DataTransferModal />
         </div>
       )}
+
+      {/* 5. Info Mesin AI & Model Gemini */}
+      <AIModelInfoCard />
     </div>
   );
 }
