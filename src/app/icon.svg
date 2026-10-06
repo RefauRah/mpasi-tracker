@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="karsaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="50%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="karsaGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="karsaWhite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#ECFDF5" />
+    </linearGradient>
+    <filter id="karsaShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#064e3b" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Background -->
+  <rect width="512" height="512" rx="128" fill="url(#karsaBg)" />
+
+  <!-- Subtle glow inner circle -->
+  <circle cx="256" cy="256" r="190" fill="white" opacity="0.06" />
+
+  <!-- Stylized 'K' + Leaf + Heart Healthcare Symbol -->
+  <g filter="url(#karsaShadow)">
+    <!-- Vertical stem of K / Sprout Pillar -->
+    <path
+      d="M168 128 C168 114.7 178.7 104 192 104 C205.3 104 216 114.7 216 128 L216 384 C216 397.3 205.3 408 192 408 C178.7 408 168 397.3 168 384 Z"
+      fill="url(#karsaWhite)"
+    />
+
+    <!-- Upper branch of K / Vitality Leaf -->
+    <path
+      d="M208 260 L318 140 C327.4 129.7 343.3 129.2 353.4 138.9 C363.3 148.4 363.3 164.2 353.6 173.8 L264 262 L360 364 C369.6 374.2 368.9 390.2 358.5 399.5 C348.3 408.8 332.3 408 323 397.7 L208 274 Z"
+      fill="url(#karsaWhite)"
+    />
+
+    <!-- Golden Vitality Heart Leaf Accent -->
+    <path
+      d="M296 232 C296 232 350 178 390 206 C426 231 398 288 348 316 C314 335 284 316 284 316 C284 316 270 286 284 256 C290 243 296 232 296 232 Z"
+      fill="url(#karsaGold)"
+      opacity="0.95"
+    />
+
+    <!-- Small Sparkle in Golden Leaf -->
+    <circle cx="360" cy="235" r="14" fill="#FFFFFF" opacity="0.9" />
+  </g>
+</svg>
