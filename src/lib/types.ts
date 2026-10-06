@@ -92,6 +92,9 @@ export interface AnalyzeResult {
   foods: FoodItem[];
   total: NutritionSummary;
   notes?: string;
+  is_fallback?: boolean;
+  fallback_reason?: string;
+  engine_used?: string;
 }
 
 export interface TBMedicationLog {
@@ -221,6 +224,9 @@ export interface ParentAnalyzeResult {
   health_evaluation: string;
   purine_status: 'aman' | 'waspada' | 'tinggi';
   cholesterol_status: 'aman' | 'waspada' | 'tinggi';
+  is_fallback?: boolean;
+  fallback_reason?: string;
+  engine_used?: string;
 }
 
 export interface ParentRecommendation {

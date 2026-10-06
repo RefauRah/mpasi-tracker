@@ -70,19 +70,24 @@ export default function AIModelInfoCard() {
             <Brain size={18} />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="text-xs font-bold text-[var(--text-main)]">Mesin AI: Google Gemini</h3>
               <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
                 Active
               </span>
             </div>
-            <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
-              <Cpu size={12} className="text-purple-500" />
+            <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 mt-0.5 flex-wrap">
+              <Cpu size={12} className="text-purple-500 shrink-0" />
               <span>Model yang dipakai: </span>
               <strong className="text-purple-700 dark:text-purple-300 font-mono font-bold">
                 {data.activeModel}
               </strong>
-            </p>
+              {!data.availableModels.some((m) => m.id === data.activeModel) && (
+                <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded font-semibold">
+                  (⚠️ Model tidak standar Google, otomatis dialihkan ke gemini-2.0-flash)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -152,13 +152,21 @@ export default function ParentMealInput({ role, onMealAdded }: ParentMealInputPr
 
       {/* Live AI Analysis Result Toast/Card */}
       {lastAnalysis && (
-        <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 text-xs space-y-2.5 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-            <span className="font-extrabold text-emerald-900 flex items-center gap-1.5">
-              <CheckCircle2 size={16} className="text-emerald-600" />
+        <div className={`p-4 rounded-2xl border text-xs space-y-2.5 animate-fade-in ${
+          lastAnalysis.is_fallback ? 'bg-amber-50/80 border-amber-300' : 'bg-emerald-50/70 border-emerald-200'
+        }`}>
+          <div className="flex items-center justify-between border-b border-inherit pb-2 flex-wrap gap-2">
+            <span className={`font-extrabold flex items-center gap-1.5 ${
+              lastAnalysis.is_fallback ? 'text-amber-900' : 'text-emerald-900'
+            }`}>
+              {lastAnalysis.is_fallback ? (
+                <AlertTriangle size={16} className="text-amber-600" />
+              ) : (
+                <CheckCircle2 size={16} className="text-emerald-600" />
+              )}
               Hasil Analisis Makanan ({lastAnalysis.total.calories} kkal)
             </span>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
                 lastAnalysis.purine_status === 'aman' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
               }`}>
@@ -172,9 +180,26 @@ export default function ParentMealInput({ role, onMealAdded }: ParentMealInputPr
             </div>
           </div>
 
-          <p className="text-[11px] text-emerald-800 leading-relaxed">
+          <p className={`text-[11px] leading-relaxed ${
+            lastAnalysis.is_fallback ? 'text-amber-950' : 'text-emerald-800'
+          }`}>
             {lastAnalysis.health_evaluation}
           </p>
+
+          {/* Engine & Fallback Notice */}
+          <div className="pt-2 border-t border-inherit flex items-center justify-between text-[10px]">
+            {lastAnalysis.is_fallback ? (
+              <span className="text-amber-800 font-medium flex items-center gap-1">
+                <AlertTriangle size={12} className="text-amber-600 shrink-0" />
+                <span><b>Mode Fallback:</b> {lastAnalysis.fallback_reason || 'Koneksi ke model AI dialihkan ke kalkulasi standar offline'}</span>
+              </span>
+            ) : (
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <Sparkles size={12} className="text-emerald-600 shrink-0" />
+                <span>Diproses oleh: <b>{lastAnalysis.engine_used || 'Google Gemini AI'}</b></span>
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -15,22 +15,47 @@ import {
 import { calculateLabAdjustedTargets } from './nutrition-targets';
 
 const apiKey = process.env.GEMINI_API_KEY || '';
-const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+const KNOWN_GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
+];
+
+export function getSafeGeminiModel(): string {
+  const configured = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
+  if (KNOWN_GEMINI_MODELS.includes(configured)) {
+    return configured;
+  }
+  return 'gemini-2.0-flash';
+}
 
 export async function analyzeFoodWithGemini(
   inputText: string,
   ageInMonths: number
 ): Promise<AnalyzeResult> {
   if (!apiKey) {
-    // Graceful fallback mock estimation if no API key present
-    return generateMockAnalysis(inputText);
+    return generateMockAnalysis(inputText, 'API Key Gemini belum terkonfigurasi di environment');
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+  const configuredModel = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
+  const modelsToTry = [
+    getSafeGeminiModel(),
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+  ].filter((v, i, a) => a.indexOf(v) === i);
 
-    const prompt = `
+  let lastError = '';
+
+  for (const modelName of modelsToTry) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: modelName });
+
+      const prompt = `
 Kamu adalah ahli gizi spesialis MPASI (Makanan Pendamping ASI) bayi.
 Tugasmu adalah menganalisis teks makanan MPASI yang diinputkan orang tua.
 Teks input bisa mengandung berbagai satuan (contoh: gram, sendok makan / sdm, sendok teh / sdt, potong, buah, genggam, mangkuk kecil, bola pingpong, dll.).
@@ -69,16 +94,29 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    return JSON.parse(cleanJson) as AnalyzeResult;
-  } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    return generateMockAnalysis(inputText);
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+
+      return {
+        ...parsed,
+        is_fallback: false,
+        engine_used: `Google Gemini AI (${modelName})`,
+      };
+    } catch (error: any) {
+      lastError = error?.message || String(error);
+      console.error(`[Karsa MPASI] Gagal memanggil model ${modelName}:`, lastError);
+    }
   }
+
+  const reason = configuredModel !== 'gemini-2.0-flash' && !KNOWN_GEMINI_MODELS.includes(configuredModel)
+    ? `Model '${configuredModel}' tidak valid di Google API`
+    : `Koneksi API Gemini gagal: ${lastError.slice(0, 70)}`;
+
+  return generateMockAnalysis(inputText, reason);
 }
+
 
 export async function getRecommendationsWithGemini(
   current: NutritionSummary,
@@ -91,7 +129,7 @@ export async function getRecommendationsWithGemini(
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+    const model = genAI.getGenerativeModel({ model: getSafeGeminiModel() });
 
     const prompt = `
 Kamu adalah konsultan MPASI bayi profesional.
@@ -132,7 +170,10 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
 /**
  * Fallback jika API key belum diisi atau error network
  */
-function generateMockAnalysis(inputText: string): AnalyzeResult {
+function generateMockAnalysis(
+  inputText: string,
+  fallbackReason: string = 'Mode offline / API Key belum terhubung'
+): AnalyzeResult {
   const items = inputText.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
   
   const foods = items.map(item => {
@@ -194,6 +235,9 @@ function generateMockAnalysis(inputText: string): AnalyzeResult {
     foods,
     total,
     notes: 'Kombinasi makanan yang baik! Pastikan selalu menambahkan lemak tambahan seperti minyak kelapa/EVOO/mentega untuk tumbuh kembang otak si kecil.',
+    is_fallback: true,
+    fallback_reason: fallbackReason,
+    engine_used: 'Offline Fallback Engine',
   };
 }
 
@@ -231,14 +275,24 @@ export async function analyzeParentFoodWithGemini(
   const roleName = role === 'ayah' ? 'Ayah (Pria)' : 'Ibu (Wanita)';
 
   if (!apiKey) {
-    return generateMockParentAnalysis(inputText, role);
+    return generateMockParentAnalysis(inputText, role, 'API Key Gemini belum disetel di environment');
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+  const configuredModel = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
+  const modelsToTry = [
+    getSafeGeminiModel(),
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+  ].filter((v, i, a) => a.indexOf(v) === i);
 
-    const prompt = `
+  let lastError = '';
+
+  for (const modelName of modelsToTry) {
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: modelName });
+
+      const prompt = `
 Kamu adalah dokter spesialis nutrisi klinis dan ahli diet metabolik (Sp.GK).
 Tugasmu adalah menganalisis teks makanan/minuman harian orang dewasa (${roleName}) dengan akurasi gizi standar Tabel Komposisi Pangan Indonesia (TKPI) & Pedoman Klinis.
 
@@ -298,16 +352,29 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
 
-    return JSON.parse(cleanJson) as ParentAnalyzeResult;
-  } catch (error) {
-    console.error('Error calling Gemini API for parent food analysis:', error);
-    return generateMockParentAnalysis(inputText, role);
+      return {
+        ...parsed,
+        is_fallback: false,
+        engine_used: `Google Gemini AI (${modelName})`,
+      };
+    } catch (error: any) {
+      lastError = error?.message || String(error);
+      console.error(`[Karsa AI] Gagal memanggil model ${modelName}:`, lastError);
+    }
   }
+
+  const reason = configuredModel !== 'gemini-2.0-flash' && !KNOWN_GEMINI_MODELS.includes(configuredModel)
+    ? `Model '${configuredModel}' tidak terdaftar di Google API`
+    : `Koneksi Gemini gagal: ${lastError.slice(0, 70)}`;
+
+  return generateMockParentAnalysis(inputText, role, reason);
 }
+
 
 export async function getParentRecommendationsWithGemini(
   role: ParentRole,
@@ -322,7 +389,7 @@ export async function getParentRecommendationsWithGemini(
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+    const model = genAI.getGenerativeModel({ model: getSafeGeminiModel() });
 
     const prompt = `
 Kamu adalah konsultan gizi klinis untuk ${roleName}.
@@ -357,7 +424,11 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
   }
 }
 
-function generateMockParentAnalysis(inputText: string, role: ParentRole): ParentAnalyzeResult {
+function generateMockParentAnalysis(
+  inputText: string,
+  role: ParentRole,
+  fallbackReason: string = 'Mode offline / API Key belum terhubung'
+): ParentAnalyzeResult {
   const items = inputText.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
 
   const foods: ParentFoodItem[] = items.map((item) => {
@@ -523,6 +594,9 @@ function generateMockParentAnalysis(inputText: string, role: ParentRole): Parent
     health_evaluation,
     purine_status,
     cholesterol_status,
+    is_fallback: true,
+    fallback_reason: fallbackReason,
+    engine_used: 'Offline Fallback Engine',
   };
 }
 
@@ -602,7 +676,7 @@ export async function evaluateAITargetsFromLab(
   if (forceAI && apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: geminiModel });
+      const model = genAI.getGenerativeModel({ model: getSafeGeminiModel() });
 
       const conditionNote = isBusui
         ? `Ibu sedang dalam kondisi MENYUSUI AKTIF (${condition === 'menyusui_eksklusif' ? 'ASI Eksklusif 0-6 bulan' : 'Menyusui Lanjutan'}). Pastikan pantangan tidak mengorbankan nutrisi dan suplai ASI si kecil.`
