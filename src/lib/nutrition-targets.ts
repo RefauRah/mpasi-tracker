@@ -275,3 +275,205 @@ export function calculateParentIdealNutrition(params: {
   };
 }
 
+export interface LabAdjustedTargets {
+  hasLabData: boolean;
+  labDate: string | null;
+  uricAcid: number | null;
+  uricAcidStatus: 'normal' | 'waspada' | 'tinggi';
+  maxUricNormal: number;
+  target_uric_acid_lab_max: number;
+  totalCholesterol: number | null;
+  cholesterolStatus: 'normal' | 'waspada' | 'tinggi';
+  target_cholesterol_lab_max: number;
+  target_purine_max: number;
+  target_cholesterol_max: number;
+  target_fiber_min: number;
+  adjusted_water_glasses: number;
+  phase: 'pemulihan_ketat' | 'pencegahan_waspada' | 'pemeliharaan_normal';
+  phaseLabel: string;
+  defaultTitle: string;
+  defaultSummary: string;
+  defaultDirectives: string[];
+  defaultRecommendations: string[];
+}
+
+/**
+ * Menghitung target kolesterol, purin (asam urat), serat, hidrasi, dan target lab
+ * yang tersinkronisasi 100% secara dinamis dengan hasil cek darah laboratorium terbaru.
+ */
+export function calculateLabAdjustedTargets(params: {
+  role: 'ayah' | 'ibu';
+  specialCondition?: ParentSpecialCondition;
+  latestLab?: {
+    date: string;
+    uric_acid: number;
+    total_cholesterol: number;
+    ldl_cholesterol?: number;
+    hdl_cholesterol?: number;
+    triglycerides?: number;
+    blood_pressure?: string;
+    notes?: string;
+  } | null;
+}): LabAdjustedTargets {
+  const { role, specialCondition = 'none', latestLab } = params;
+  const isAyah = role === 'ayah';
+  const roleName = isAyah ? 'Ayah' : 'Ibu';
+
+  const maxUricNormal = isAyah ? 7.0 : 6.0;
+  const target_uric_acid_lab_max = isAyah ? 6.5 : 5.5;
+  const target_cholesterol_lab_max = 190;
+
+  // Water bonus calculation
+  let waterBonus = 0;
+  if (specialCondition === 'menyusui_eksklusif') waterBonus = 3;
+  else if (specialCondition === 'menyusui_lanjutan' || specialCondition === 'hamil') waterBonus = 2;
+  else if (specialCondition === 'atlet_pekerja_keras') waterBonus = 3;
+  else if (specialCondition === 'hipertensi_asam_urat') waterBonus = 2;
+
+  const isBusui = specialCondition === 'menyusui_eksklusif' || specialCondition === 'menyusui_lanjutan';
+
+  if (!latestLab || latestLab.uric_acid === null || latestLab.total_cholesterol === null) {
+    return {
+      hasLabData: false,
+      labDate: null,
+      uricAcid: null,
+      uricAcidStatus: 'normal',
+      maxUricNormal,
+      target_uric_acid_lab_max,
+      totalCholesterol: null,
+      cholesterolStatus: 'normal',
+      target_cholesterol_lab_max,
+      target_purine_max: isAyah ? 400 : 350,
+      target_cholesterol_max: 200,
+      target_fiber_min: isAyah ? 28 : 25,
+      adjusted_water_glasses: 8 + waterBonus,
+      phase: 'pemeliharaan_normal',
+      phaseLabel: 'Pemeliharaan Standar',
+      defaultTitle: isBusui ? `Target Gizi Busui Sehat ${roleName}` : `Target Nutrisi Standar ${roleName}`,
+      defaultSummary: `Belum ada data cek darah. Target mengacu pada batas standar pemeliharaan gizi seimbang (${isAyah ? 'Purin maks 400mg' : 'Purin maks 350mg'}, Kolesterol maks 200mg).`,
+      defaultDirectives: [
+        'Pertahankan pola makan seimbang dan batasi makanan olahan tinggi lemak jenuh.',
+        'Minum air putih minimal 8 gelas per hari untuk menjaga metabolisme optimal.',
+        'Catat hasil tes lab darah berkala untuk penyesuaian target otomatis oleh AI.',
+      ],
+      defaultRecommendations: [
+        'Sayur bayam bening, tahu/tempe kukus, ikan air tawar, oatmeal, dan buah pepaya segar.',
+      ],
+    };
+  }
+
+  const uricVal = Number(latestLab.uric_acid);
+  const cholVal = Number(latestLab.total_cholesterol);
+  const ldlVal = latestLab.ldl_cholesterol ? Number(latestLab.ldl_cholesterol) : null;
+
+  // Status computation for Uric Acid
+  let uricAcidStatus: 'normal' | 'waspada' | 'tinggi' = 'normal';
+  if (uricVal >= maxUricNormal + 0.8) {
+    uricAcidStatus = 'tinggi';
+  } else if (uricVal > maxUricNormal) {
+    uricAcidStatus = 'waspada';
+  }
+
+  // Status computation for Cholesterol
+  let cholesterolStatus: 'normal' | 'waspada' | 'tinggi' = 'normal';
+  if (cholVal >= 240 || (ldlVal !== null && ldlVal >= 160)) {
+    cholesterolStatus = 'tinggi';
+  } else if (cholVal >= 200 || (ldlVal !== null && ldlVal >= 130)) {
+    cholesterolStatus = 'waspada';
+  }
+
+  // Dietary target purine
+  let target_purine_max = isAyah ? 400 : 350;
+  let target_water_glasses = 8 + waterBonus;
+  if (uricAcidStatus === 'tinggi') {
+    target_purine_max = 180; // Restriksi ketat
+    target_water_glasses = 11 + waterBonus;
+  } else if (uricAcidStatus === 'waspada') {
+    target_purine_max = 280; // Restriksi moderat
+    target_water_glasses = 9 + waterBonus;
+  }
+
+  // Dietary target cholesterol & fiber
+  let target_cholesterol_max = 200;
+  let target_fiber_min = isAyah ? 28 : 25;
+  if (cholesterolStatus === 'tinggi') {
+    target_cholesterol_max = 120; // Restriksi ketat
+    target_fiber_min = 32; // Tingkatkan serat larut pengikat kolesterol
+  } else if (cholesterolStatus === 'waspada') {
+    target_cholesterol_max = 160; // Restriksi moderat
+    target_fiber_min = 28;
+  }
+
+  // Phase assessment
+  let phase: 'pemulihan_ketat' | 'pencegahan_waspada' | 'pemeliharaan_normal' = 'pemeliharaan_normal';
+  let phaseLabel = 'Pemeliharaan Normal';
+  if (uricAcidStatus === 'tinggi' || cholesterolStatus === 'tinggi') {
+    phase = 'pemulihan_ketat';
+    phaseLabel = 'Fase Penurunan Ketat';
+  } else if (uricAcidStatus === 'waspada' || cholesterolStatus === 'waspada') {
+    phase = 'pencegahan_waspada';
+    phaseLabel = 'Fase Waspada & Pencegahan';
+  }
+
+  // Clinical Directives & Recommendations
+  const defaultDirectives: string[] = [];
+  const defaultRecommendations: string[] = [];
+  let defaultTitle = isBusui ? `Target Gizi Busui Sehat ${roleName}` : `Pemeliharaan Normal ${roleName}`;
+  let defaultSummary = `Hasil cek darah ${latestLab.date} berada dalam rentang normal (Asam Urat: ${uricVal} mg/dL, Kolesterol: ${cholVal} mg/dL). Target disetel pada level pemeliharaan optimal.`;
+
+  if (isBusui) {
+    defaultDirectives.push('Jaga produksi ASI dengan asupan gizi seimbang, cairan cukup, dan istirahat teratur.');
+    defaultRecommendations.push('Daun katuk, sayur oyong bening, oatmeal, ikan kembung/gurame segar, pepaya, dan tahu/tempe kukus.');
+  }
+
+  if (uricAcidStatus === 'tinggi' && cholesterolStatus === 'tinggi') {
+    defaultTitle = `Fase Pemulihan Ketat: Asam Urat & Kolesterol Tinggi`;
+    defaultSummary = `Hasil lab ${latestLab.date} menunjukkan Asam Urat (${uricVal} mg/dL) dan Kolesterol (${cholVal} mg/dL) berada di atas batas normal. Target harian diperketat: Purin maks ${target_purine_max} mg, Kolesterol makanan maks ${target_cholesterol_max} mg, dan hidrasi min ${target_water_glasses} gelas.`;
+    defaultDirectives.push('Hindari 100% jeroan, emping/melinjo, seafood bercangkang, santan kental, dan kaldu pekat.');
+    defaultDirectives.push('Ganti minyak goreng sawit dengan minyak zaitun atau metode masak kukus, rebus, dan panggang tanpa minyak berlebih.');
+    defaultDirectives.push(`Minum air putih minimal ${target_water_glasses} gelas (${(target_water_glasses * 0.25).toFixed(1)} L) per hari untuk mempercepat pembuangan kristal asam urat lewat urin.`);
+    defaultRecommendations.push('Labu siam, wortel rebus, oatmeal, buncis, tahu kukus, buah pepaya, dan pir kaya vitamin C & pektin.');
+  } else if (uricAcidStatus === 'tinggi') {
+    defaultTitle = `Fase Penurunan Asam Urat Intensif`;
+    defaultSummary = `Asam Urat tercatat ${uricVal} mg/dL (Tinggi > ${maxUricNormal}). Target purin makanan diperketat menjadi maks ${target_purine_max} mg/hari dan target hidrasi dinaikkan ke ${target_water_glasses} gelas/hari.`;
+    defaultDirectives.push('Hindari daging merah berlemak, jeroan, melinjo, kerang, remis, dan minuman manis tinggi sirup fruktosa.');
+    defaultDirectives.push(`Tingkatkan minum air putih hingga ${target_water_glasses} gelas/hari untuk melarutkan kristal purin dalam darah.`);
+    defaultRecommendations.push('Putih telur, tahu tempe porsi wajar, ikan mas/nila kukus, sayur sawi hijau/labu air, dan buah jeruk manis.');
+  } else if (cholesterolStatus === 'tinggi') {
+    defaultTitle = `Fase Penurunan Kolesterol Intensif`;
+    defaultSummary = `Kolesterol Total tercatat ${cholVal} mg/dL (Tinggi >= 200). Target kolesterol makanan diturunkan menjadi maks ${target_cholesterol_max} mg/hari dan target serat ditingkatkan ke min ${target_fiber_min} g/hari.`;
+    defaultDirectives.push('Hindari gorengan minyak berulang, santan kental, mentega, kuning telur berlebih, dan kulit unggas.');
+    defaultDirectives.push('Tingkatkan asupan serat larut (beta-glukan & pektin) untuk mengikat asam empedu dan melancarkan eliminasi kolesterol.');
+    defaultRecommendations.push('Oatmeal hangat pagi hari, apel dengan kulit, alpukat porsi sedang, ikan kembung (Omega-3), dan brokoli kukus.');
+  } else if (uricAcidStatus === 'waspada' || cholesterolStatus === 'waspada') {
+    defaultTitle = `Fase Waspada & Pencegahan`;
+    defaultSummary = `Hasil lab ${latestLab.date} mendekati batas atas (Asam Urat: ${uricVal} mg/dL, Kolesterol: ${cholVal} mg/dL). Target harian disetel moderat (Purin &le; ${target_purine_max} mg, Kolesterol &le; ${target_cholesterol_max} mg) untuk mencegah lonjakan.`;
+    defaultDirectives.push('Batasi konsumsi gorengan, makanan siap saji, jeroan ringan, dan cemilan berkadar gula/fruktosa tinggi.');
+    defaultDirectives.push('Pertahankan pola makan seimbang dan konsumsi air putih teratur sepanjang hari.');
+    defaultRecommendations.push('Sayur bening bayam jagung, lalapan labu siam kukus, tahu bacem panggang, jus buah naga murni tanpa gula.');
+  }
+
+  return {
+    hasLabData: true,
+    labDate: latestLab.date,
+    uricAcid: uricVal,
+    uricAcidStatus,
+    maxUricNormal,
+    target_uric_acid_lab_max,
+    totalCholesterol: cholVal,
+    cholesterolStatus,
+    target_cholesterol_lab_max,
+    target_purine_max,
+    target_cholesterol_max,
+    target_fiber_min,
+    adjusted_water_glasses: target_water_glasses,
+    phase,
+    phaseLabel,
+    defaultTitle,
+    defaultSummary,
+    defaultDirectives,
+    defaultRecommendations,
+  };
+}
+
+

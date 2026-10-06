@@ -488,7 +488,7 @@ export default function OrangTuaDashboard() {
       </div>
 
       {/* Blood Lab Checks (Kolesterol & Asam Urat) */}
-      {profile && <ParentLabSection role={role} profile={profile} />}
+      {profile && <ParentLabSection role={role} profile={profile} onLabUpdated={fetchData} />}
 
       {/* Interactive Charts (Intake vs Lab Check Trends) */}
       <ParentHealthChart

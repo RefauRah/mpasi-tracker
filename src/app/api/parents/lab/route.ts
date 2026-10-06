@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDbClient, initDb } from '@/lib/db';
 import { ParentLabCheck, ParentRole } from '@/lib/types';
+import { calculateLabAdjustedTargets } from '@/lib/nutrition-targets';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       notes,
     } = body;
 
-    if (!uric_acid || !total_cholesterol) {
+    if (uric_acid === undefined || uric_acid === null || total_cholesterol === undefined || total_cholesterol === null) {
       return NextResponse.json({ error: 'Kadar Asam Urat & Kolesterol wajib diisi' }, { status: 400 });
     }
 
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
 
     const db = await getDbClient();
     let savedId = Date.now();
+    let adjustedTargets: ReturnType<typeof calculateLabAdjustedTargets> | null = null;
 
     if (db) {
       await initDb();
@@ -88,33 +90,57 @@ export async function POST(request: Request) {
       });
       savedId = Number(res.lastInsertRowid);
 
-      // Automatically compute AI-adjusted targets based on new lab test
-      const maxUricNormal = parent_role === 'ayah' ? 7.0 : 6.0;
-      let newPurineMax = parent_role === 'ayah' ? 400 : 350;
-      if (Number(uric_acid) >= maxUricNormal + 0.8) {
-        newPurineMax = 180;
-      } else if (Number(uric_acid) > maxUricNormal) {
-        newPurineMax = 280;
+      // Fetch profile to get special_condition if any
+      const profileRes = await db.execute({
+        sql: 'SELECT special_condition FROM parent_profiles WHERE role = ?',
+        args: [parent_role],
+      });
+      const specialCondition = profileRes.rows.length > 0 ? (profileRes.rows[0].special_condition as any) : 'none';
+
+      // Fetch latest lab test (order by date DESC, id DESC)
+      const latestLabRes = await db.execute({
+        sql: 'SELECT * FROM parent_lab_checks WHERE parent_role = ? ORDER BY date DESC, id DESC LIMIT 1',
+        args: [parent_role],
+      });
+
+      let latestLab = null;
+      if (latestLabRes.rows.length > 0) {
+        const row = latestLabRes.rows[0];
+        latestLab = {
+          date: String(row.date),
+          uric_acid: Number(row.uric_acid),
+          total_cholesterol: Number(row.total_cholesterol),
+          ldl_cholesterol: row.ldl_cholesterol ? Number(row.ldl_cholesterol) : undefined,
+          hdl_cholesterol: row.hdl_cholesterol ? Number(row.hdl_cholesterol) : undefined,
+          triglycerides: row.triglycerides ? Number(row.triglycerides) : undefined,
+          blood_pressure: row.blood_pressure ? String(row.blood_pressure) : undefined,
+          notes: row.notes ? String(row.notes) : undefined,
+        };
       }
 
-      let newCholesterolMax = 200;
-      let newFiberMin = parent_role === 'ayah' ? 28 : 25;
-      if (Number(total_cholesterol) >= 240 || (ldl_cholesterol && Number(ldl_cholesterol) >= 160)) {
-        newCholesterolMax = 120;
-        newFiberMin = 32;
-      } else if (Number(total_cholesterol) >= 200 || (ldl_cholesterol && Number(ldl_cholesterol) >= 130)) {
-        newCholesterolMax = 160;
-        newFiberMin = 28;
-      }
+      // Compute unified clinical lab adjusted targets
+      adjustedTargets = calculateLabAdjustedTargets({
+        role: parent_role,
+        specialCondition,
+        latestLab,
+      });
 
-      // Update parent_profiles target columns in database
+      // Update parent_profiles targets in DB
       await db.execute({
         sql: `
           UPDATE parent_profiles
-          SET target_purine_max = ?, target_cholesterol_max = ?, target_fiber_min = ?
+          SET target_purine_max = ?, target_cholesterol_max = ?, target_fiber_min = ?,
+              target_uric_acid_max = ?, target_cholesterol_lab_max = ?
           WHERE role = ?
         `,
-        args: [newPurineMax, newCholesterolMax, newFiberMin, parent_role],
+        args: [
+          adjustedTargets.target_purine_max,
+          adjustedTargets.target_cholesterol_max,
+          adjustedTargets.target_fiber_min,
+          adjustedTargets.target_uric_acid_lab_max,
+          adjustedTargets.target_cholesterol_lab_max,
+          parent_role,
+        ],
       });
     }
 
@@ -126,6 +152,7 @@ export async function POST(request: Request) {
       total_cholesterol: Number(total_cholesterol),
       notes,
       autoUpdatedTargets: true,
+      adjustedTargets,
     });
   } catch (error) {
     console.error('Error saving parent lab check:', error);
@@ -145,10 +172,70 @@ export async function DELETE(request: Request) {
     const db = await getDbClient();
     if (db) {
       await initDb();
+
+      // Find role of the check being deleted
+      const checkRes = await db.execute({
+        sql: 'SELECT parent_role FROM parent_lab_checks WHERE id = ?',
+        args: [id],
+      });
+      const role = checkRes.rows.length > 0 ? (checkRes.rows[0].parent_role as ParentRole) : 'ayah';
+
       await db.execute({
         sql: 'DELETE FROM parent_lab_checks WHERE id = ?',
         args: [id],
       });
+
+      // Recalculate targets based on remaining latest lab check
+      const profileRes = await db.execute({
+        sql: 'SELECT special_condition FROM parent_profiles WHERE role = ?',
+        args: [role],
+      });
+      const specialCondition = profileRes.rows.length > 0 ? (profileRes.rows[0].special_condition as any) : 'none';
+
+      const latestLabRes = await db.execute({
+        sql: 'SELECT * FROM parent_lab_checks WHERE parent_role = ? ORDER BY date DESC, id DESC LIMIT 1',
+        args: [role],
+      });
+
+      let latestLab = null;
+      if (latestLabRes.rows.length > 0) {
+        const row = latestLabRes.rows[0];
+        latestLab = {
+          date: String(row.date),
+          uric_acid: Number(row.uric_acid),
+          total_cholesterol: Number(row.total_cholesterol),
+          ldl_cholesterol: row.ldl_cholesterol ? Number(row.ldl_cholesterol) : undefined,
+          hdl_cholesterol: row.hdl_cholesterol ? Number(row.hdl_cholesterol) : undefined,
+          triglycerides: row.triglycerides ? Number(row.triglycerides) : undefined,
+          blood_pressure: row.blood_pressure ? String(row.blood_pressure) : undefined,
+          notes: row.notes ? String(row.notes) : undefined,
+        };
+      }
+
+      const adjustedTargets = calculateLabAdjustedTargets({
+        role,
+        specialCondition,
+        latestLab,
+      });
+
+      await db.execute({
+        sql: `
+          UPDATE parent_profiles
+          SET target_purine_max = ?, target_cholesterol_max = ?, target_fiber_min = ?,
+              target_uric_acid_max = ?, target_cholesterol_lab_max = ?
+          WHERE role = ?
+        `,
+        args: [
+          adjustedTargets.target_purine_max,
+          adjustedTargets.target_cholesterol_max,
+          adjustedTargets.target_fiber_min,
+          adjustedTargets.target_uric_acid_lab_max,
+          adjustedTargets.target_cholesterol_lab_max,
+          role,
+        ],
+      });
+
+      return NextResponse.json({ success: true, deletedId: id, role, adjustedTargets });
     }
 
     return NextResponse.json({ success: true, deletedId: id });
@@ -157,3 +244,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Failed to delete lab check' }, { status: 500 });
   }
 }
+

@@ -8,9 +8,10 @@ import { TestTube2, Plus, Trash2, Calendar, CheckCircle2, AlertTriangle, ShieldC
 interface ParentLabSectionProps {
   role: ParentRole;
   profile: ParentProfile;
+  onLabUpdated?: () => void;
 }
 
-export default function ParentLabSection({ role, profile }: ParentLabSectionProps) {
+export default function ParentLabSection({ role, profile, onLabUpdated }: ParentLabSectionProps) {
   const [checks, setChecks] = useState<ParentLabCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,7 +79,8 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
         setBloodPressure('');
         setNotes('');
         setShowForm(false);
-        fetchLabChecks();
+        await fetchLabChecks();
+        onLabUpdated?.();
       }
     } catch (err) {
       console.error(err);
@@ -92,7 +94,8 @@ export default function ParentLabSection({ role, profile }: ParentLabSectionProp
     try {
       const res = await fetch(`/api/parents/lab?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
-        fetchLabChecks();
+        await fetchLabChecks();
+        onLabUpdated?.();
       }
     } catch (err) {
       console.error(err);

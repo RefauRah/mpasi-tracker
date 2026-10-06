@@ -131,8 +131,8 @@ export default function ProfilePage() {
           setParentFiberMin(profileData.target_fiber_min || (role === 'ayah' ? 28 : 25));
         }
 
-        setParentUricAcidLabMax(role === 'ayah' ? 6.5 : 5.5);
-        setParentCholesterolLabMax(190);
+        setParentUricAcidLabMax(profileData.target_uric_acid_max || (role === 'ayah' ? 6.5 : 5.5));
+        setParentCholesterolLabMax(profileData.target_cholesterol_lab_max || 190);
       }
     } catch (err) {
       console.error('Error loading parent profile or AI targets:', err);
@@ -154,6 +154,8 @@ export default function ProfilePage() {
         setParentCholesterolMax(assessment.adjusted_cholesterol_max);
         setParentPurineMax(assessment.adjusted_purine_max);
         setParentFiberMin(assessment.adjusted_fiber_min);
+        setParentUricAcidLabMax(parentRole === 'ayah' ? 6.5 : 5.5);
+        setParentCholesterolLabMax(190);
         setParentMsg('✨ Target AI berhasil dihitung & disinkronkan dari hasil lab!');
         setTimeout(() => setParentMsg(''), 4000);
       }
