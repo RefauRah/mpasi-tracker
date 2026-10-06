@@ -126,6 +126,7 @@ export default function OrangTuaDashboard() {
       const data = await res.json();
       if (data && !data.error) {
         setAiAssessment(data);
+        await fetchData();
       }
     } catch (err) {
       console.error('Error manual AI sync:', err);

@@ -114,13 +114,27 @@ export default function ParentAITargetsBanner({
         <div className="bg-[var(--bg-card)]/90 backdrop-blur-sm p-2.5 rounded-xl border border-[var(--border-color)] shadow-2xs space-y-0.5">
           <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-semibold">
             <span>Batas Purin AI</span>
-            <Flame size={12} className="text-amber-500" />
+            {assessment.uricAcidStatus === 'tinggi' ? (
+              <Flame size={13} className="text-red-500" />
+            ) : assessment.uricAcidStatus === 'waspada' ? (
+              <Flame size={13} className="text-amber-500" />
+            ) : (
+              <CheckCircle2 size={13} className="text-emerald-600" />
+            )}
           </div>
           <p className="text-sm font-black text-[var(--text-main)]">
             &le; {assessment.adjusted_purine_max} <span className="text-[10px] font-normal text-[var(--text-muted)]">mg/hari</span>
           </p>
-          <span className="text-[9px] font-semibold text-amber-700 block">
-            Lab: {assessment.uricAcid !== null ? `${assessment.uricAcid} mg/dL` : 'Belum dicek'}
+          <span
+            className={`text-[9px] font-semibold block ${
+              assessment.uricAcidStatus === 'tinggi'
+                ? 'text-red-600 font-bold'
+                : assessment.uricAcidStatus === 'waspada'
+                ? 'text-amber-700 font-bold'
+                : 'text-emerald-700'
+            }`}
+          >
+            Lab: {assessment.uricAcid !== null ? `${assessment.uricAcid} mg/dL (${assessment.uricAcidStatus === 'tinggi' ? 'Tinggi' : assessment.uricAcidStatus === 'waspada' ? 'Waspada' : 'Normal'})` : 'Belum dicek'}
           </span>
         </div>
 
@@ -128,13 +142,27 @@ export default function ParentAITargetsBanner({
         <div className="bg-[var(--bg-card)]/90 backdrop-blur-sm p-2.5 rounded-xl border border-[var(--border-color)] shadow-2xs space-y-0.5">
           <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] font-semibold">
             <span>Batas Kolesterol AI</span>
-            <ShieldAlert size={12} className="text-rose-500" />
+            {assessment.cholesterolStatus === 'tinggi' ? (
+              <ShieldAlert size={13} className="text-red-500" />
+            ) : assessment.cholesterolStatus === 'waspada' ? (
+              <ShieldAlert size={13} className="text-amber-500" />
+            ) : (
+              <CheckCircle2 size={13} className="text-emerald-600" />
+            )}
           </div>
           <p className="text-sm font-black text-[var(--text-main)]">
             &le; {assessment.adjusted_cholesterol_max} <span className="text-[10px] font-normal text-[var(--text-muted)]">mg/hari</span>
           </p>
-          <span className="text-[9px] font-semibold text-rose-700 block">
-            Lab: {assessment.totalCholesterol !== null ? `${assessment.totalCholesterol} mg/dL` : 'Belum dicek'}
+          <span
+            className={`text-[9px] font-semibold block ${
+              assessment.cholesterolStatus === 'tinggi'
+                ? 'text-red-600 font-bold'
+                : assessment.cholesterolStatus === 'waspada'
+                ? 'text-amber-700 font-bold'
+                : 'text-emerald-700'
+            }`}
+          >
+            Lab: {assessment.totalCholesterol !== null ? `${assessment.totalCholesterol} mg/dL (${assessment.cholesterolStatus === 'tinggi' ? 'Tinggi' : assessment.cholesterolStatus === 'waspada' ? 'Waspada' : 'Normal'})` : 'Belum dicek'}
           </span>
         </div>
 
