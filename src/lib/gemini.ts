@@ -140,6 +140,7 @@ function generateMockAnalysis(inputText: string): AnalyzeResult {
     const isMeat = /daging|ayam|hati|ikan|telur/i.test(item);
     const isVeg = /wortel|bayam|brokoli|labu|sayur/i.test(item);
     const isFruit = /pisang|alpukat|apel|buah/i.test(item);
+    const isMilk = /susu|formula|asi|uht|keju|yogurt/i.test(item);
 
     let grams = 30;
     let cal = 40;
@@ -150,7 +151,9 @@ function generateMockAnalysis(inputText: string): AnalyzeResult {
     let iron = 0.4;
     let calc = 5;
 
-    if (isRice) {
+    if (isMilk) {
+      grams = 100; cal = 65; prot = 3.2; carbs = 5.0; fat = 3.5; fiber = 0; iron = 0.1; calc = 120;
+    } else if (isRice) {
       grams = 45; cal = 55; prot = 1.2; carbs = 12; fat = 0.3; fiber = 0.3; iron = 0.3; calc = 4;
     } else if (isMeat) {
       grams = 25; cal = 65; prot = 5.5; carbs = 0.5; fat = 3.5; fiber = 0; iron = 1.8; calc = 8;
@@ -236,20 +239,36 @@ export async function analyzeParentFoodWithGemini(
     const model = genAI.getGenerativeModel({ model: geminiModel });
 
     const prompt = `
-Kamu adalah dokter spesialis nutrisi klinis dan ahli diet metabolik.
-Tugasmu adalah menganalisis makanan harian untuk orang dewasa (${roleName}) dengan fokus utama pada:
-1. PENCEGAHAN & PENURUNAN ASAM URAT (Kadar Purin makanan: Rendah/Sedang/Tinggi/Sangat Tinggi, estimasi mg purin).
-2. PENCEGAHAN & PENURUNAN KOLESTEROL (Kadar Kolesterol mg, Lemak Jenuh g, dan Serat g yang meluruhkan kolesterol).
+Kamu adalah dokter spesialis nutrisi klinis dan ahli diet metabolik (Sp.GK).
+Tugasmu adalah menganalisis teks makanan/minuman harian orang dewasa (${roleName}) dengan akurasi gizi standar Tabel Komposisi Pangan Indonesia (TKPI) & Pedoman Klinis.
 
-Input Makanan: "${inputText}"
+Input Makanan / Minuman: "${inputText}"
 
-Hitung estimasi nutrisi dengan akurat.
+ATURAN STANDAR GIZI KLINIS WAJIB:
+1. SUSU & PRODUK OLAHAN SUSU (Susu UHT / Segar / Bubuk / Low Fat / Skim / Yogurt):
+   - Purin: HAMPIR 0 (0 - 5 mg). Susu adalah makanan bebas purin dan asam orotat di dalamnya justru membantu peluruhan asam urat.
+   - Serat: PASTI 0 g (susu hewani tidak mengandung serat).
+   - Kolesterol: Low fat/Skim = 2-10 mg per 200ml; Full cream = 15-25 mg per 200ml.
+   - Kalori 200ml: Low fat ~90-100 kkal; Skim ~70 kkal; Full cream ~130-150 kkal.
+2. MAKANAN NABATI MURNI (Sayur, Buah, Nasi, Oat, Tahu, Tempe, Minyak Nabati):
+   - Kolesterol: WAJIB 0 mg (hanya produk hewani yang mengandung kolesterol).
+3. SERAT PANGAN (Fiber):
+   - Daging, telur, susu, ikan, minyak: PASTI 0 g serat.
+   - Sayur, buah, oatmeal, biji-bijian, kacang-kacangan: Mengandung serat (1-5 g per porsi).
+4. PANDUAN PURIN (Asam Urat):
+   - Sangat Rendah (< 30 mg): Susu, telur, keju, nasi, oat, buah (apel, pepaya, pisang, jeruk), sebagian besar sayur bening.
+   - Sedang (30 - 100 mg): Tahu, tempe, dada ayam tanpa kulit, daging sapi tanpa lemak, ikan mas/gurame/nila.
+   - Tinggi (100 - 200 mg): Daging merah berlemak, seafood (udang, cumi, kepiting), emping/melinjo.
+   - Sangat Tinggi (> 200 mg): Jeroan (hati, babat, usus, paru, limpa, otak), sarden, ekstrak kaldu kental.
+5. PANDUAN PORSI:
+   - Identifikasi volume/berat dari input (contoh: "200ml", "1 gelas" ~ 200-250ml, "1 piring" ~ 100-150g nasi, "1 potong ayam" ~ 40-50g).
+
 Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
 
 {
   "foods": [
     {
-      "name": "string (nama makanan)",
+      "name": "string (nama makanan/minuman)",
       "quantity": "string (porsi & satuan)",
       "estimated_grams": number,
       "calories": number,
@@ -342,63 +361,126 @@ function generateMockParentAnalysis(inputText: string, role: ParentRole): Parent
   const items = inputText.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
 
   const foods: ParentFoodItem[] = items.map((item) => {
-    const isJeroan = /hati|jeroan|babat|usus|paru|limpa|otak/i.test(item);
-    const isEmping = /emping|melinjo/i.test(item);
-    const isSeafood = /udang|cumi|kepiting|kerang|sarden/i.test(item);
-    const isFried = /goreng|gorengan|santan|gulai|rendang/i.test(item);
-    const isChickenBreast = /dada ayam|ayam kukus|ayam panggang/i.test(item);
-    const isEgg = /telur/i.test(item);
-    const isVeg = /bayam|wortel|buncis|labu|brokoli|sayur/i.test(item);
-    const isFruit = /pepaya|apel|pisang|jeruk|alpukat|buah/i.test(item);
-    const isOatOrRice = /oat|oatmeal|nasi merah|nasi/i.test(item);
-    const isTofuTempeh = /tahu|tempe/i.test(item);
+    const lower = item.toLowerCase();
+    const isMilk = /susu|uht|yogurt|keju|latte/i.test(lower);
+    const isJeroan = /hati|jeroan|babat|usus|paru|limpa|otak/i.test(lower);
+    const isEmping = /emping|melinjo/i.test(lower);
+    const isSeafood = /udang|cumi|kepiting|kerang|sarden/i.test(lower);
+    const isFried = /goreng|gorengan|santan|gulai|rendang/i.test(lower);
+    const isChickenBreast = /dada ayam|ayam kukus|ayam panggang|ayam/i.test(lower);
+    const isEgg = /telur/i.test(lower);
+    const isVeg = /bayam|wortel|buncis|labu|brokoli|sayur|kangkung/i.test(lower);
+    const isFruit = /pepaya|apel|pisang|jeruk|alpukat|buah|mangga/i.test(lower);
+    const isOatOrRice = /oat|oatmeal|nasi merah|nasi|beras/i.test(lower);
+    const isTofuTempeh = /tahu|tempe/i.test(lower);
+    const isBreadOrNoodle = /roti|mie|bihun|pasta|kentang/i.test(lower);
+    const isWaterOrTea = /air putih|air mineral|teh tawar|kopi hitam/i.test(lower);
 
-    let calories = 150;
-    let protein = 5;
-    let carbs = 20;
-    let fat = 4;
-    let fiber = 2;
-    let cholesterol = 10;
-    let purine_mg = 40;
+    // Extract volume or multiplier if user wrote e.g. "200ml", "250ml", "2 butir", "2 potong"
+    let volumeMl = 200;
+    const mlMatch = lower.match(/(\d+)\s*(ml|cc)/i);
+    if (mlMatch) {
+      volumeMl = parseInt(mlMatch[1], 10);
+    }
+
+    let estimated_grams = 100;
+    let calories = 120;
+    let protein = 4;
+    let carbs = 15;
+    let fat = 3;
+    let fiber = 0;
+    let cholesterol = 0;
+    let purine_mg = 10;
     let purine_level: 'rendah' | 'sedang' | 'tinggi' | 'sangat_tinggi' = 'rendah';
-    let saturated_fat = 1.2;
+    let saturated_fat = 0.5;
+    let quantity = item;
 
-    if (isJeroan) {
+    if (isWaterOrTea) {
+      estimated_grams = volumeMl;
+      calories = 0; protein = 0; carbs = 0; fat = 0; fiber = 0;
+      cholesterol = 0; purine_mg = 0; purine_level = 'rendah'; saturated_fat = 0;
+    } else if (isMilk) {
+      const isLowFat = /low fat|rendah lemak|skim/i.test(lower);
+      const isFullCream = /full cream|murni|creamy/i.test(lower);
+      estimated_grams = volumeMl;
+
+      if (isLowFat) {
+        calories = Math.round((volumeMl / 200) * 95);
+        protein = Number(((volumeMl / 200) * 7.0).toFixed(1));
+        carbs = Number(((volumeMl / 200) * 9.5).toFixed(1));
+        fat = Number(((volumeMl / 200) * 2.5).toFixed(1));
+        saturated_fat = Number(((volumeMl / 200) * 1.5).toFixed(1));
+        cholesterol = Math.round((volumeMl / 200) * 8);
+      } else if (isFullCream) {
+        calories = Math.round((volumeMl / 200) * 130);
+        protein = Number(((volumeMl / 200) * 6.5).toFixed(1));
+        carbs = Number(((volumeMl / 200) * 10.0).toFixed(1));
+        fat = Number(((volumeMl / 200) * 7.0).toFixed(1));
+        saturated_fat = Number(((volumeMl / 200) * 4.5).toFixed(1));
+        cholesterol = Math.round((volumeMl / 200) * 20);
+      } else {
+        // Standard UHT
+        calories = Math.round((volumeMl / 200) * 110);
+        protein = Number(((volumeMl / 200) * 6.8).toFixed(1));
+        carbs = Number(((volumeMl / 200) * 10.0).toFixed(1));
+        fat = Number(((volumeMl / 200) * 4.0).toFixed(1));
+        saturated_fat = Number(((volumeMl / 200) * 2.5).toFixed(1));
+        cholesterol = Math.round((volumeMl / 200) * 12);
+      }
+
+      fiber = 0; // Milk contains 0g fiber
+      purine_mg = 2; // Milk is practically purine-free and helps lower uric acid
+      purine_level = 'rendah';
+    } else if (isJeroan) {
+      estimated_grams = 100;
       calories = 220; protein = 22; carbs = 2; fat = 14; fiber = 0;
       cholesterol = 280; purine_mg = 250; purine_level = 'sangat_tinggi'; saturated_fat = 5.5;
     } else if (isEmping) {
-      calories = 130; protein = 3; carbs = 18; fat = 6; fiber = 1.5;
+      estimated_grams = 40;
+      calories = 140; protein = 3.5; carbs = 18; fat = 6.5; fiber = 1.5;
       cholesterol = 0; purine_mg = 160; purine_level = 'tinggi'; saturated_fat = 1.8;
     } else if (isSeafood) {
-      calories = 160; protein = 24; carbs = 1; fat = 6; fiber = 0;
-      cholesterol = 150; purine_mg = 180; purine_level = 'tinggi'; saturated_fat = 1.8;
+      estimated_grams = 100;
+      calories = 140; protein = 22; carbs = 1; fat = 4.5; fiber = 0;
+      cholesterol = 150; purine_mg = 180; purine_level = 'tinggi'; saturated_fat = 1.5;
     } else if (isFried) {
+      estimated_grams = 120;
       calories = 280; protein = 8; carbs = 22; fat = 18; fiber = 1;
-      cholesterol = 65; purine_mg = 70; purine_level = 'sedang'; saturated_fat = 7.0;
+      cholesterol = 45; purine_mg = 70; purine_level = 'sedang'; saturated_fat = 7.0;
     } else if (isChickenBreast) {
+      estimated_grams = 100;
       calories = 165; protein = 31; carbs = 0; fat = 3.6; fiber = 0;
-      cholesterol = 85; purine_mg = 90; purine_level = 'sedang'; saturated_fat = 1.0;
+      cholesterol = 75; purine_mg = 85; purine_level = 'sedang'; saturated_fat = 1.0;
     } else if (isEgg) {
+      estimated_grams = 55;
       calories = 75; protein = 6.5; carbs = 0.5; fat = 5; fiber = 0;
-      cholesterol = 185; purine_mg = 5; purine_level = 'rendah'; saturated_fat = 1.6;
+      cholesterol = 186; purine_mg = 5; purine_level = 'rendah'; saturated_fat = 1.6;
     } else if (isVeg) {
-      calories = 45; protein = 2.5; carbs = 8; fat = 0.5; fiber = 3.5;
-      cholesterol = 0; purine_mg = 25; purine_level = 'rendah'; saturated_fat = 0.1;
+      estimated_grams = 100;
+      calories = 40; protein = 2.5; carbs = 7; fat = 0.4; fiber = 3.2;
+      cholesterol = 0; purine_mg = 20; purine_level = 'rendah'; saturated_fat = 0.1;
     } else if (isFruit) {
-      calories = 70; protein = 1; carbs = 17; fat = 0.5; fiber = 3.2;
+      estimated_grams = 120;
+      calories = 70; protein = 1; carbs = 17; fat = 0.4; fiber = 3.0;
       cholesterol = 0; purine_mg = 8; purine_level = 'rendah'; saturated_fat = 0.1;
     } else if (isOatOrRice) {
-      calories = 180; protein = 4.5; carbs = 38; fat = 1.5; fiber = 4.0;
+      estimated_grams = 150;
+      calories = 180; protein = 4.0; carbs = 38; fat = 1.2; fiber = 2.5;
       cholesterol = 0; purine_mg = 15; purine_level = 'rendah'; saturated_fat = 0.3;
     } else if (isTofuTempeh) {
-      calories = 120; protein = 11; carbs = 6; fat = 6; fiber = 3;
-      cholesterol = 0; purine_mg = 50; purine_level = 'sedang'; saturated_fat = 0.9;
+      estimated_grams = 80;
+      calories = 120; protein = 11; carbs = 6; fat = 6; fiber = 2.8;
+      cholesterol = 0; purine_mg = 45; purine_level = 'sedang'; saturated_fat = 0.9;
+    } else if (isBreadOrNoodle) {
+      estimated_grams = 80;
+      calories = 190; protein = 6; carbs = 36; fat = 2; fiber = 1.5;
+      cholesterol = 0; purine_mg = 15; purine_level = 'rendah'; saturated_fat = 0.4;
     }
 
     return {
       name: item,
-      quantity: '1 porsi',
-      estimated_grams: 100,
+      quantity,
+      estimated_grams,
       calories,
       protein,
       carbs,
@@ -428,9 +510,11 @@ function generateMockParentAnalysis(inputText: string, role: ParentRole): Parent
   const purine_status = total.purine_mg > 350 ? 'tinggi' : total.purine_mg > 200 ? 'waspada' : 'aman';
   const cholesterol_status = total.cholesterol > 200 ? 'tinggi' : total.cholesterol > 120 ? 'waspada' : 'aman';
 
-  let health_evaluation = 'Pilihan makanan seimbang. Pertahankan asupan serat dan perbanyak minum air putih (2-3 liter) untuk meluruhkan asam urat.';
+  let health_evaluation = 'Pilihan makanan ramah asam urat dan kolesterol. Pertahankan pola makan seimbang dan konsumsi cairan yang cukup.';
   if (total.purine_mg > 300 || total.cholesterol > 200) {
     health_evaluation = '⚠️ Perhatian: Terdeteksi bahan tinggi purin/kolesterol. Batasi makanan berlemak jenuh & olahan jeroan/emping untuk menjaga asam urat dan kolesterol dalam batas normal.';
+  } else if (/susu/i.test(inputText)) {
+    health_evaluation = '✅ Susu rendah lemak pilihan sangat baik! Bebas purin, kaya kalsium & protein, serta asam orotat di dalamnya membantu peluruhan asam urat lewat ginjal.';
   }
 
   return {
