@@ -75,8 +75,11 @@ export async function POST(request: Request) {
       meal: savedMeal,
       analysis,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error analyzing parent meal:', error);
-    return NextResponse.json({ error: 'Gagal menganalisis makanan' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Gagal menganalisis makanan orang tua' },
+      { status: 500 }
+    );
   }
 }

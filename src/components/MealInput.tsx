@@ -45,8 +45,10 @@ export default function MealInput({ onMealAdded }: MealInputProps) {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error('Gagal menganalisis makanan');
+        throw new Error(data.error || 'Gagal menganalisis makanan');
       }
 
       setInputText('');

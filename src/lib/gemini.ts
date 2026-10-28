@@ -38,7 +38,7 @@ export async function analyzeFoodWithGemini(
   ageInMonths: number
 ): Promise<AnalyzeResult> {
   if (!apiKey) {
-    return generateMockAnalysis(inputText, 'API Key Gemini belum terkonfigurasi di environment');
+    throw new Error('API Key Gemini (GEMINI_API_KEY) belum terkonfigurasi di environment server.');
   }
 
   const configuredModel = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
@@ -58,10 +58,15 @@ export async function analyzeFoodWithGemini(
       const prompt = `
 Kamu adalah ahli gizi spesialis MPASI (Makanan Pendamping ASI) bayi.
 Tugasmu adalah menganalisis teks makanan MPASI yang diinputkan orang tua.
-Teks input bisa mengandung berbagai satuan (contoh: gram, sendok makan / sdm, sendok teh / sdt, potong, buah, genggam, mangkuk kecil, bola pingpong, dll.).
+Teks input bisa mengandung berbagai satuan (contoh: gram, sendok makan / sdm, sendok teh / sdt, potong, buah, genggam, mangkuk kecil, bola pingpong, porsi, piring, dll.).
 
 Konteks Usia Bayi: ${ageInMonths} bulan.
 Input Makanan: "${inputText}"
+
+ATURAN KUANTITAS & PENGALI PORSI (SANGAT PENTING):
+- Perhatikan dengan teliti angka jumlah/porsi pada input.
+- Jika pengguna menuliskan kelipatan atau kuantitas (misalnya: "2 porsi", "2 mangkuk", "2 piring", "2 butir", "2 potong", "3 sdm", "2x lipat", dsb.), kamu WAJIB mengalikan berat (estimated_grams) dan SEMUA nilai nutrisi (kalori, protein, karbohidrat, lemak, serat, zat besi, kalsium) sesuai kelipatan tersebut!
+- Contoh: Jika 1 porsi bubur mengandung 55 kkal & 1.2g protein, maka "2 porsi bubur" WAJIB dihitung 110 kkal & 2.4g protein. Jangan pernah hanya mengembalikan nilai untuk 1 porsi jika pengguna meminta 2 porsi.
 
 Hitung estimasi nutrisi dengan akurat berdasarkan standar gizi makanan pendamping ASI.
 Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
@@ -110,11 +115,9 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
     }
   }
 
-  const reason = configuredModel !== 'gemini-2.0-flash' && !KNOWN_GEMINI_MODELS.includes(configuredModel)
-    ? `Model '${configuredModel}' tidak valid di Google API`
-    : `Koneksi API Gemini gagal: ${lastError.slice(0, 70)}`;
-
-  return generateMockAnalysis(inputText, reason);
+  throw new Error(
+    `Gagal memanggil Gemini AI (${configuredModel}): ${lastError || 'Tidak ada respon dari Google Generative AI'}`
+  );
 }
 
 
@@ -124,7 +127,7 @@ export async function getRecommendationsWithGemini(
   ageInMonths: number
 ): Promise<MenuRecommendation[]> {
   if (!apiKey) {
-    return generateMockRecommendations(current, target, ageInMonths);
+    throw new Error('API Key Gemini (GEMINI_API_KEY) belum terkonfigurasi di environment server.');
   }
 
   try {
@@ -161,9 +164,9 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return JSON.parse(cleanJson) as MenuRecommendation[];
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error calling Gemini API for recommendations:', error);
-    return generateMockRecommendations(current, target, ageInMonths);
+    throw new Error(`Gagal mengambil rekomendasi menu dari Gemini AI: ${error?.message || String(error)}`);
   }
 }
 
@@ -275,7 +278,7 @@ export async function analyzeParentFoodWithGemini(
   const roleName = role === 'ayah' ? 'Ayah (Pria)' : 'Ibu (Wanita)';
 
   if (!apiKey) {
-    return generateMockParentAnalysis(inputText, role, 'API Key Gemini belum disetel di environment');
+    throw new Error('API Key Gemini (GEMINI_API_KEY) belum disetel di environment server.');
   }
 
   const configuredModel = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim();
@@ -314,7 +317,10 @@ ATURAN STANDAR GIZI KLINIS WAJIB:
    - Sedang (30 - 100 mg): Tahu, tempe, dada ayam tanpa kulit, daging sapi tanpa lemak, ikan mas/gurame/nila.
    - Tinggi (100 - 200 mg): Daging merah berlemak, seafood (udang, cumi, kepiting), emping/melinjo.
    - Sangat Tinggi (> 200 mg): Jeroan (hati, babat, usus, paru, limpa, otak), sarden, ekstrak kaldu kental.
-5. PANDUAN PORSI:
+5. PANDUAN PORSI & PENGALI KUANTITAS (SANGAT PENTING):
+   - Perhatikan dengan seksama angka kuantitas atau kelipatan porsi dari input pengguna.
+   - Jika pengguna menulis "2 porsi", "2 piring", "2 mangkuk", "2 potong", "2 butir", "2 gelas", "2x", dsb., kamu WAJIB mengalikan berat (estimated_grams) dan SEMUA nilai nutrisi (calories, protein, carbs, fat, fiber, cholesterol, purine_mg, saturated_fat) secara proporsional sesuai kelipatan tersebut!
+   - Contoh: Jika 1 porsi nasi ayam adalah 400 kkal & 30g protein, maka "2 porsi nasi ayam" WAJIB dihitung 800 kkal & 60g protein.
    - Identifikasi volume/berat dari input (contoh: "200ml", "1 gelas" ~ 200-250ml, "1 piring" ~ 100-150g nasi, "1 potong ayam" ~ 40-50g).
 
 Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
@@ -368,11 +374,9 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
     }
   }
 
-  const reason = configuredModel !== 'gemini-2.0-flash' && !KNOWN_GEMINI_MODELS.includes(configuredModel)
-    ? `Model '${configuredModel}' tidak terdaftar di Google API`
-    : `Koneksi Gemini gagal: ${lastError.slice(0, 70)}`;
-
-  return generateMockParentAnalysis(inputText, role, reason);
+  throw new Error(
+    `Gagal menganalisis makanan orang tua dengan Gemini AI (${configuredModel}): ${lastError || 'Tidak ada respon dari Google Generative AI'}`
+  );
 }
 
 
@@ -384,7 +388,7 @@ export async function getParentRecommendationsWithGemini(
   const roleName = role === 'ayah' ? 'Ayah' : 'Ibu';
 
   if (!apiKey) {
-    return generateMockParentRecommendations(role);
+    throw new Error('API Key Gemini (GEMINI_API_KEY) belum disetel di environment server.');
   }
 
   try {
@@ -418,9 +422,9 @@ Kembalikan HANYA format JSON murni (JSON raw tanpa \`\`\`json markdown wrapper):
     const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return JSON.parse(cleanJson) as ParentRecommendation[];
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error calling Gemini API for parent recommendations:', error);
-    return generateMockParentRecommendations(role);
+    throw new Error(`Gagal mengambil rekomendasi orang tua dari Gemini AI: ${error?.message || String(error)}`);
   }
 }
 
