@@ -14,7 +14,7 @@ import {
 } from './types';
 import { calculateLabAdjustedTargets } from './nutrition-targets';
 
-const apiKey = process.env.GEMINI_API_KEY || '';
+const apiKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
 
 const KNOWN_GEMINI_MODELS = [
   'gemini-2.5-flash',
